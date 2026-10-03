@@ -37,6 +37,8 @@ docs/archive/
 spikes/
 IDEA_POOL.md
 CONTEXT*.md
+docs/superpowers/
+.superpowers/
 *.pdf
 *.docx
 

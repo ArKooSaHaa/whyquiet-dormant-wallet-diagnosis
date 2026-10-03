@@ -451,8 +451,8 @@ export default function Evidence() {
                     <td className="text-right font-mono tnum text-[var(--text)]">
                       {m.wallets_actioned.toLocaleString()}
                     </td>
-                    <td className="text-right font-mono tnum text-[var(--text)]">
-                      {m.users_recovered.toLocaleString()}
+                    <td className="text-right font-mono tnum text-[var(--text)]" data-testid={`users-recovered-${m.strategy}`}>
+                      {Math.round(m.users_recovered).toLocaleString()}
                     </td>
                     <td className="text-right font-mono tnum text-[var(--text-muted)]">
                       {formatBDT(m.cost_bdt)}

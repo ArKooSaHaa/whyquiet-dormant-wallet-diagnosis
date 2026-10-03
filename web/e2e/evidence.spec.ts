@@ -48,6 +48,8 @@ test.describe("Evidence & ML Rigor Page", () => {
     // Net values are thousands of BDT: the axis must not round them to "0.0M"
     await expect(moneyCard.locator(".recharts-yAxis")).not.toContainText("M");
     await expect(page.getByTestId("assumed-badge")).toHaveText("ASSUMED");
+    // Recovered users are people: whole numbers, not "21.103"
+    await expect(page.getByTestId("users-recovered-model")).toHaveText(/^[\d,]+$/);
 
     // Check initial Net Value (4% base)
     const baseModelVal = await page.getByTestId("net-value-model").innerText();
