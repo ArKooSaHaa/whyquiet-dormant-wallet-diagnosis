@@ -135,6 +135,52 @@ test.describe("Batches & Governance Page", () => {
     await expect(page.getByTestId(`self-approval-notice-${mine.id}`)).toBeVisible();
   });
 
+  test("real write path: propose sends the token, a repeat gets 409 and the error is shown", async ({ page }) => {
+    const auth: (string | undefined)[] = [];
+    let posts = 0;
+    await page.route("**/api/batches", (route) => {
+      if (route.request().method() === "GET") return route.fulfill({ json: [] });
+      auth.push(route.request().headers()["authorization"]);
+      const { cause, wallet_ids } = route.request().postDataJSON();
+      if (++posts > 1) return route.fulfill({ status: 409, json: { detail: "A wallet is already in an open batch" } });
+      return route.fulfill({ json: {
+        id: "22222222-2222-4222-8222-222222222222", cause, remedy_code: "job_exit_payroll_reengage", unit_cost_bdt: 15,
+        wallet_count: wallet_ids.length, status: "proposed", proposed_by: "analyst-id", decided_by: null,
+        decided_at: null, decision_note: null, created_at: new Date().toISOString(),
+      } });
+    });
+
+    await page.goto("/#/batches");
+    await signIn(page, "analyst");
+    await page.getByTestId("propose-batch-btn").click();
+    await expect(page.getByTestId("propose-success-msg")).toContainText("22222222-2222-4222-8222-222222222222");
+
+    await page.getByTestId("propose-batch-btn").click();
+    await expect(page.getByTestId("propose-error-msg")).toHaveText("A wallet is already in an open batch");
+    await expect(page.getByTestId("propose-success-msg")).toHaveCount(0);
+    expect(auth).toEqual(["Bearer e2e-token", "Bearer e2e-token"]);
+  });
+
+  test("real write path: a 403 on approve is shown and the batch stays proposed", async ({ page }) => {
+    const id = "33333333-3333-4333-8333-333333333333";
+    await page.route("**/api/batches", (route) => route.fulfill({ json: [{
+      id, cause: "job_exit", remedy_code: "job_exit_payroll_reengage", unit_cost_bdt: 15, wallet_count: 2,
+      status: "proposed", proposed_by: "someone-else", decided_by: null, decided_at: null, decision_note: null,
+      created_at: new Date().toISOString(),
+    }] }));
+    await page.route(`**/api/batches/${id}/approve`, (route) =>
+      route.fulfill({ status: 403, json: { detail: "You cannot decide a batch you proposed" } }));
+
+    await page.goto("/#/batches");
+    await signIn(page, "approver");
+    await page.getByTestId(`approve-btn-${id}`).click();
+    await page.getByTestId("decision-note-input").fill("Looks good.");
+    await page.getByTestId("confirm-decision-btn").click();
+
+    await expect(page.getByTestId("decision-modal")).toContainText("You cannot decide a batch you proposed");
+    await expect(page.getByTestId(`batch-row-${id}`)).not.toContainText("APPROVED");
+  });
+
   test("persona buttons fill the email and the public demo password", async ({ page }) => {
     await page.goto("/#/batches");
     await page.getByTestId("open-login-btn").click();
