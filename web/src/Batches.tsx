@@ -228,6 +228,11 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       try {
         payload = await exportBatch(batch.id);
       } catch {
+        const batchMatchingWallets = bundle
+          ? bundle.wallets.filter(
+              (w) => w.verdict === "attributed" && w.cause === batch.cause
+            )
+          : [];
         payload = {
           batch_id: batch.id,
           cause: batch.cause,
@@ -236,7 +241,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
           cost_bdt: batch.wallet_count * batch.unit_cost_bdt,
           approved_by: batch.decided_by || user?.email || "approver@whyquiet.demo",
           approved_at: batch.decided_at || new Date().toISOString(),
-          wallet_ids: matchingWallets.slice(0, batch.wallet_count).map((w) => w.wallet_id),
+          wallet_ids: batchMatchingWallets.slice(0, batch.wallet_count).map((w) => w.wallet_id),
         };
       }
 
@@ -290,11 +295,12 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       {/* 503 Offline Notice Banner (Cutline 2) */}
       {offline && (
         <div
+          role="status"
           className="p-3.5 rounded-[var(--radius)] bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between gap-4"
           data-testid="write-path-offline-banner"
         >
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" aria-hidden="true" />
             <span>
               <strong>Write path offline.</strong> Read-only screens still work; the batches below are samples and batch actions are simulated locally.
             </span>
@@ -333,6 +339,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               <Select
                 id="propose-cause-select"
                 value={selectedCause}
+                aria-label="Select Diagnosed Cause"
                 onChange={(e) => {
                   setSelectedCause(e.target.value as Cause);
                   setProposeSuccess(null);
@@ -346,7 +353,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               />
             </Field>
 
-            <div className="p-3.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] space-y-2 text-xs">
+            <div className="p-3.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] space-y-2 text-xs" role="region" aria-label="Batch Summary Estimate">
               <div className="flex justify-between text-[var(--text-muted)]">
                 <span>Eligible Wallets:</span>
                 <span className="font-mono font-bold text-[var(--text)]" data-testid="eligible-wallets-count">
@@ -380,7 +387,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                 {proposing ? "Proposing Batch..." : `Propose Batch (${matchingWallets.length} Wallets)`}
               </Button>
             ) : user?.role === "approver" ? (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] text-center">
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] text-center" role="status">
                 Signed in as <strong>Approver</strong>. Only Analysts can propose new batches.
               </div>
             ) : (
@@ -395,12 +402,12 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
             )}
 
             {proposeSuccess && (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(94,200,180,0.15)] border border-[var(--accent)] text-xs text-[var(--accent)]" data-testid="propose-success-msg">
+              <div role="status" aria-live="polite" className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(94,200,180,0.15)] border border-[var(--accent)] text-xs text-[var(--accent)]" data-testid="propose-success-msg">
                 {proposeSuccess}
               </div>
             )}
             {proposeError && (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(235,94,85,0.15)] border border-[var(--danger)] text-xs text-[var(--danger)]" data-testid="propose-error-msg">
+              <div role="alert" aria-live="polite" className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(235,94,85,0.15)] border border-[var(--danger)] text-xs text-[var(--danger)]" data-testid="propose-error-msg">
                 {proposeError}
               </div>
             )}
@@ -424,7 +431,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                     <div className="text-[10px] uppercase font-bold text-[var(--text-muted)] mb-1">
                       Bangla Copy (বাংলা)
                     </div>
-                    <div className="text-[var(--text)] leading-relaxed font-bangla">
+                    <div lang="bn" className="text-[var(--text)] leading-relaxed font-bangla">
                       {selectedRemedy.message_bn}
                     </div>
                   </div>
@@ -433,7 +440,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                     <div className="text-[10px] uppercase font-bold text-[var(--text-muted)] mb-1">
                       English Copy
                     </div>
-                    <div className="text-[var(--text)] leading-relaxed">
+                    <div lang="en" className="text-[var(--text)] leading-relaxed">
                       {selectedRemedy.message_en}
                     </div>
                   </div>
@@ -469,13 +476,13 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
             <Table testid="batches-table">
               <thead>
                 <tr>
-                  <th>Batch ID</th>
-                  <th>Cause &amp; Remedy</th>
-                  <th className="text-right">Wallets</th>
-                  <th className="text-right">Total Cost (ASSUMED)</th>
-                  <th>Status</th>
-                  <th>Proposed By</th>
-                  <th className="text-right">Actions</th>
+                  <th scope="col">Batch ID</th>
+                  <th scope="col">Cause &amp; Remedy</th>
+                  <th scope="col" className="text-right">Wallets</th>
+                  <th scope="col" className="text-right">Total Cost (ASSUMED)</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Proposed By</th>
+                  <th scope="col" className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -543,6 +550,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                                     variant="primary"
                                     onClick={() => setDecideModal({ batch: b, action: "approve" })}
                                     data-testid={`approve-btn-${b.id}`}
+                                    aria-label={`Approve batch ${b.id}`}
                                     className="text-xs px-2 py-1 bg-[var(--success)]"
                                   >
                                     Approve
@@ -551,6 +559,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                                     variant="ghost"
                                     onClick={() => setDecideModal({ batch: b, action: "reject" })}
                                     data-testid={`reject-btn-${b.id}`}
+                                    aria-label={`Reject batch ${b.id}`}
                                     className="text-xs px-2 py-1 text-[var(--danger)]"
                                   >
                                     Reject
@@ -571,6 +580,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                               onClick={() => handleExport(b)}
                               disabled={exportingId === b.id}
                               data-testid={`download-json-btn-${b.id}`}
+                              aria-label={`Download campaign JSON for batch ${b.id}`}
                               className="text-xs px-2 py-1"
                             >
                               {exportingId === b.id ? "Exporting..." : "Download JSON"}
@@ -625,6 +635,8 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               onChange={(e) => setDecisionNote(e.target.value)}
               placeholder="e.g. Authorized for SMS notification push"
               data-testid="decision-note-input"
+              required
+              aria-required="true"
               autoFocus
             />
           </Field>

@@ -195,7 +195,7 @@ export default function Wallet({
       {/* Header & Meta Strip */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[var(--border)]">
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={handleBack} data-testid="back-button" className="h-[36px]">
+          <Button variant="secondary" size="sm" onClick={handleBack} data-testid="back-button" aria-label="Return to triage queue" className="h-[36px]">
             ← Queue
           </Button>
           <div>
@@ -217,7 +217,7 @@ export default function Wallet({
 
         <div className="flex items-center gap-2">
           {isAttributed && (
-            <a href="#/batches" className="text-decoration-none">
+            <a href="#/batches" className="text-decoration-none" aria-label="Propose this cause in a remedy batch">
               <Button variant="primary" size="sm" className="h-[36px] text-xs">
                 Propose in Batch →
               </Button>
@@ -243,7 +243,7 @@ export default function Wallet({
               </span>
             </div>
             <div className="p-2.5 px-3.5 rounded-[var(--radius-sm)] bg-[var(--accent-soft)] border border-[var(--accent)]/30">
-              <span className="text-[var(--accent-fg)] dark:text-[var(--accent)]">Model Verdict: </span>
+              <span className="text-[var(--text-muted)]">Model Verdict: </span>
               <strong className="text-[var(--accent)]">
                 {isAttributed && wallet.cause ? `Target ${CAUSE_LABELS[wallet.cause]}` : "Refuse & Save Budget"}
               </strong>
@@ -263,9 +263,9 @@ export default function Wallet({
                 </span>
                 <Chip tone="warning">ASSUMED</Chip>
               </div>
-              <h3 className="t-xl font-bold text-[var(--text)] mt-1" data-testid="remedy-label">
+              <h2 className="t-xl font-bold text-[var(--text)] mt-1" data-testid="remedy-label">
                 {remedy.label}
-              </h3>
+              </h2>
             </div>
             <div className="text-left sm:text-right">
               <div className="text-xs text-[var(--text-faint)]">Unit Remedy Cost (ASSUMED)</div>
@@ -280,13 +280,13 @@ export default function Wallet({
             </div>
             <div>
               <div className="text-[11px] font-mono text-[var(--text-faint)]">English:</div>
-              <div className="text-sm text-[var(--text)] font-medium mt-0.5" data-testid="remedy-msg-en">
+              <div lang="en" className="text-sm text-[var(--text)] font-medium mt-0.5" data-testid="remedy-msg-en">
                 {remedy.message_en}
               </div>
             </div>
             <div className="pt-2 border-t border-[var(--border)]/60">
               <div className="text-[11px] font-mono text-[var(--text-faint)]">বাংলা (Bangla):</div>
-              <div className="text-sm text-[var(--text)] font-medium mt-0.5" data-testid="remedy-msg-bn">
+              <div lang="bn" className="text-sm text-[var(--text)] font-medium mt-0.5" data-testid="remedy-msg-bn">
                 {remedy.message_bn}
               </div>
             </div>
@@ -300,7 +300,7 @@ export default function Wallet({
       ) : (
         /* Dedicated Refusal Screen (The Money Shot) */
         <Card className="p-8 text-center space-y-5 border-l-4 border-l-[var(--text-muted)]" data-testid="refusal-panel">
-          <div className="w-14 h-14 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] mx-auto grid place-items-center shadow-[var(--shadow-1)]">
+          <div className="w-14 h-14 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] mx-auto grid place-items-center shadow-[var(--shadow-1)]" aria-hidden="true">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
               <line x1="12" y1="8" x2="12" y2="12" />
@@ -326,7 +326,7 @@ export default function Wallet({
             <ul className="space-y-1.5 text-xs text-[var(--text)]" data-testid="refusal-reasons-list">
               {wallet.refusal_reasons.map((reason, idx) => (
                 <li key={idx} className="flex items-start gap-2">
-                  <span className="text-[var(--accent)] font-bold">•</span>
+                  <span className="text-[var(--accent)] font-bold" aria-hidden="true">•</span>
                   <span>{reason}</span>
                 </li>
               ))}
@@ -342,7 +342,7 @@ export default function Wallet({
         <Card className="p-5 sm:p-6 space-y-3" data-testid="decline-shape-card">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="t-md font-semibold text-[var(--text)]">26-Week Transaction Decline Shape</h3>
+              <h2 className="t-md font-semibold text-[var(--text)]">26-Week Transaction Decline Shape</h2>
               <p className="t-xs text-[var(--text-muted)]">
                 Weekly transaction frequency with {wallet.weeks_silent}-week inactivity window shaded
               </p>
@@ -350,7 +350,11 @@ export default function Wallet({
             <span className="text-xs font-mono text-[var(--accent)] tnum">{wallet.series.length} wks</span>
           </div>
 
-          <div className="w-full h-64 pt-2">
+          <div
+            className="w-full h-64 pt-2"
+            role="region"
+            aria-label={`26-week transaction frequency graph for wallet ${wallet.wallet_id}, showing ${wallet.weeks_silent} weeks silent`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={wallet.series} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -390,7 +394,7 @@ export default function Wallet({
         <Card className="p-5 sm:p-6 space-y-3" data-testid="posterior-chart-card">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="t-md font-semibold text-[var(--text)]">Posterior Distribution (5 Causes)</h3>
+              <h2 className="t-md font-semibold text-[var(--text)]">Posterior Distribution (5 Causes)</h2>
               <p className="t-xs text-[var(--text-muted)]">
                 Calibrated probability per churn hypothesis with threshold line τ={tau}
               </p>
@@ -398,7 +402,11 @@ export default function Wallet({
             <span className="text-xs font-mono text-[var(--text-faint)]">τ = {tau}</span>
           </div>
 
-          <div className="w-full h-64 pt-2">
+          <div
+            className="w-full h-64 pt-2"
+            role="region"
+            aria-label={`Posterior cause distribution chart: ${posteriorData.map((p) => `${p.label} ${p.prob}%`).join(", ")}`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={posteriorData} layout="vertical" margin={{ top: 10, right: 25, left: 35, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
@@ -427,7 +435,7 @@ export default function Wallet({
       <Card className="p-5 sm:p-6 space-y-4" data-testid="contributions-card">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="t-md font-semibold text-[var(--text)]">Decline Feature Attributions (SHAP Contributions)</h3>
+            <h2 className="t-md font-semibold text-[var(--text)]">Decline Feature Attributions (SHAP Contributions)</h2>
             <p className="t-xs text-[var(--text-muted)]">
               Feature values and signed push toward predicted cause hypothesis
             </p>
@@ -435,7 +443,11 @@ export default function Wallet({
           <span className="text-xs font-mono text-[var(--text-faint)]">Top {contributionData.length} features</span>
         </div>
 
-        <div className="w-full h-72 pt-2">
+        <div
+          className="w-full h-72 pt-2"
+          role="region"
+          aria-label="Decline feature SHAP attributions horizontal bar chart"
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={contributionData} layout="vertical" margin={{ top: 5, right: 30, left: 90, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
