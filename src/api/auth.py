@@ -47,9 +47,6 @@ def current_user(
         resp = sb.auth.get_user(token)
     except AuthApiError as exc:
         raise HTTPException(401, "Invalid or expired token") from exc
-    except Exception as exc:
-        logger.warning("Token verification failed: %s", exc)
-        raise HTTPException(401, "Invalid or expired token") from exc
     if not resp or not resp.user:
         raise HTTPException(401, "Invalid or expired token")
     return Actor(id=resp.user.id, role=role_of(resp.user.app_metadata))

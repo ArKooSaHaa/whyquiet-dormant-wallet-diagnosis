@@ -120,3 +120,13 @@ def test_money_table_all_correct_matches_oracle():
         assert model["wallets_actioned"] == oracle["wallets_actioned"]
         assert model["cost_bdt"] == oracle["cost_bdt"]
         assert model["value_bdt"] == oracle["value_bdt"]
+
+
+def test_money_table_refusals_cost_zero():
+    # Refused wallets are never actioned: all refused -> model spends and recovers nothing
+    rows = money_table(n_triaged=1000, n_correct=0, n_wrong=0, n_refused=1000)
+    for r in (r for r in rows if r["strategy"] == "model"):
+        assert r["wallets_actioned"] == 0
+        assert r["users_recovered"] == 0.0
+        assert r["cost_bdt"] == 0.0
+        assert r["value_bdt"] == 0.0
