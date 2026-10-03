@@ -72,10 +72,22 @@ test.describe("Queue Page & Triage", () => {
     await submitBtn.click();
     await expect(page.getByRole("alert")).toContainText("must follow format W-XXXXXX");
 
+    // The lookup reads the seed only; /api/triage was removed (D40)
+    const apiCalls: string[] = [];
+    page.on("request", (req) => { if (req.url().includes("/api/triage")) apiCalls.push(req.url()); });
+
+    // Valid format, not in the sample: says so and stays on the queue
+    await input.fill("W-ZZZZZZ");
+    await submitBtn.click();
+    await expect(page.getByRole("alert")).toContainText("W-ZZZZZZ is not in this sample");
+    await expect(page.getByTestId("lookup-success-msg")).toHaveCount(0);
+
     // Valid format input from sample
     await input.fill("W-7K9A1B");
     await submitBtn.click();
     await expect(page.getByTestId("lookup-success-msg")).toBeVisible();
+    await expect(page).toHaveURL(/#\/w\/W-7K9A1B/);
+    expect(apiCalls).toEqual([]);
   });
 
   test("clears search input using inline cross button", async ({ page }) => {

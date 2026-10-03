@@ -1,5 +1,15 @@
 # WhyQuiet: Dormant-Wallet Diagnosis (Cause Desk)
 
+[![CI](https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis/actions/workflows/ci.yml/badge.svg)](https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis/actions/workflows/ci.yml)
+[![Deploy](https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis/actions/workflows/deploy.yml/badge.svg)](https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis/actions/workflows/deploy.yml)
+[![Live demo](https://img.shields.io/badge/live%20demo-whyquiet.vercel.app-000?logo=vercel)](https://whyquiet.vercel.app)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](.python-version)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![LightGBM](https://img.shields.io/badge/model-LightGBM-9ACD32)](https://lightgbm.readthedocs.io)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Data: synthetic only](https://img.shields.io/badge/data-synthetic%20only-blue)](#11-data)
+
 **Live demo: https://whyquiet.vercel.app** (no login needed for the read-only console)
 
 Submission for **AI DEV FEST 2026 AI Hackathon** (DIU CPC × upay), theme: digital financial services / MFS.
@@ -26,7 +36,6 @@ Submission for **AI DEV FEST 2026 AI Hackathon** (DIU CPC × upay), theme: digit
 14. [Architecture](#14-architecture)
 15. [External Resources Disclosure](#15-external-resources-disclosure)
 16. [Known Limitations](#16-known-limitations)
-17. [Team](#17-team)
 
 ---
 
@@ -134,7 +143,7 @@ Exact versions are pinned in `uv.lock` and `web/package-lock.json`.
 - **None** to run the read-only console, the model pipeline, or the tests.
 - A free **Supabase** project only if you want the write path (login, batches) locally.
 - A **Vercel** account only to deploy your own copy.
-- Judges can use the hosted write path with the demo accounts `analyst@whyquiet.demo` and `approver@whyquiet.demo`. Passwords are never stored in git. <!-- TODO: state where judges get the demo passwords (e.g. submission form field). -->
+- Judges can use the hosted write path with the demo accounts `analyst@whyquiet.demo` and `approver@whyquiet.demo`. Their passwords are public on purpose (D42): the **Analyst** and **Approver** buttons on the sign-in screen fill them in. Anything proposed or approved is written to the production database and cannot be deleted.
 
 ---
 
@@ -531,21 +540,9 @@ flowchart LR
 
 - **Simulated causes.** Accuracy is measured on simulated populations; it is evidence of robustness to shift in simulation, not of real-world accuracy.
 - **Model is offline.** The console reads precomputed results from `seed.json`. The serverless API does not run the model. The Queue's Quick Wallet Diagnostic calls `POST /api/triage`, which is not implemented, and falls back to looking the wallet up in the seed.
-- **Console sign-in is a client-side demo.** The header's Sign In stores the chosen role in the browser without calling `POST /api/auth/login`, and the Batches screen falls back to local in-browser batches when an API call fails. Authentication, roles and the two-person rule are enforced by the **API and database** (verify with the `curl` steps in [Testing](#9-testing-instructions)), not by the UI. Tracked as bugs #2–#6 in [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md). <!-- TODO: remove or update this bullet if the UI is wired to the real login before submission. -->
+- **Batches screen hides some API failures.** Sign-in uses the real `POST /api/auth/login`, but if a propose, approve or export call fails, the Batches screen falls back to a local in-browser batch instead of showing the error. Authentication, roles and the two-person rule are enforced by the **API and database** (verify with the `curl` steps in [Testing](#9-testing-instructions)). Tracked as bug #3 in [`docs/TEST_REPORT.md`](docs/TEST_REPORT.md). <!-- TODO: remove this bullet if the Batches fallbacks are removed before submission. -->
 - **Public read endpoints.** `GET /api/batches` and `GET /api/batches/{id}/export` need no login. They expose only pseudonymous synthetic wallet IDs.
 - **Money model inputs are all ASSUMED** (ARPU, costs, recovery rates).
-
----
-
-## 17. Team
-
-<!-- TODO: fill in full names, roles and contacts as registered for the hackathon. -->
-
-| Name | Role | Main areas in this repo |
-| --- | --- | --- |
-| Hrittika Saha | <!-- TODO: role --> | Data generator, model, evaluation, seed export (`datagen/`, `src/model/`, `scripts/`) |
-| Shads | <!-- TODO: full name, role --> | Web console (`web/`) |
-| Arko | <!-- TODO: full name, role --> | Rules, API, database, deployment (`src/rules/`, `src/api/`, `supabase/`) |
 
 ---
 

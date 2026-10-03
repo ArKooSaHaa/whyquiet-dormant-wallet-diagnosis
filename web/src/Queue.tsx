@@ -24,7 +24,6 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
   // Quick triage lookup form state
   const [lookupId, setLookupId] = useState("");
   const [lookupError, setLookupError] = useState("");
-  const [lookupPending, setLookupPending] = useState(false);
   const [lookupSuccess, setLookupSuccess] = useState<string | null>(null);
 
   const fetchSeedData = () => {
@@ -99,7 +98,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
     setSortBy("confidence_desc");
   };
 
-  const handleLookupSubmit = async (e: React.FormEvent) => {
+  const handleLookupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLookupError("");
     setLookupSuccess(null);
@@ -117,34 +116,14 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
       return;
     }
 
-    setLookupPending(true);
-    try {
-      // Try live API if available, else check seed bundle
-      const apiRes = await fetch("/api/triage", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet_id: cleanId }),
-      }).catch(() => null);
-
-      if (apiRes && apiRes.ok) {
-        setLookupSuccess(`Wallet ${cleanId} successfully evaluated via live Cause Desk model.`);
-        setTimeout(() => handleRowClick(cleanId), 700);
-      } else {
-        // Find in seed
-        const match = bundle?.wallets.find((w) => w.wallet_id === cleanId);
-        if (match) {
-          setLookupSuccess(`Wallet ${cleanId} found (${match.verdict === "attributed" ? CAUSE_LABELS[match.cause!] : "Refused"}). Navigating...`);
-          setTimeout(() => handleRowClick(cleanId), 600);
-        } else {
-          setLookupSuccess(`Evaluated ${cleanId}: No anomalous lockups detected. Navigating to profile...`);
-          setTimeout(() => handleRowClick(cleanId), 700);
-        }
-      }
-    } catch {
-      setLookupError("Error communicating with triage service.");
-    } finally {
-      setLookupPending(false);
+    // The model's output for this sample is seed.json; there is no live triage endpoint (D40).
+    const match = bundle?.wallets.find((w) => w.wallet_id === cleanId);
+    if (!match) {
+      setLookupError(`${cleanId} is not in this sample.`);
+      return;
     }
+    setLookupSuccess(`Wallet ${cleanId} found (${match.verdict === "attributed" ? CAUSE_LABELS[match.cause!] : "Refused"}). Navigating...`);
+    setTimeout(() => handleRowClick(cleanId), 600);
   };
 
   /* ------------------- STATE 1: LOADING STATE ------------------- */
@@ -278,7 +257,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
           <div>
             <h2 className="t-md font-semibold text-[var(--text)]">Quick Wallet Diagnostic</h2>
             <p className="t-xs text-[var(--text-muted)] mt-0.5">
-              Enter any pseudonymous wallet ID to evaluate decline shape or inspect attribution
+              Look up a wallet in this sample by ID to inspect its decline shape and attribution
             </p>
           </div>
 
@@ -294,7 +273,6 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
                   if (lookupError) setLookupError("");
                 }}
                 mono
-                disabled={lookupPending}
                 invalid={Boolean(lookupError)}
                 maxLength={8}
                 className="h-[40px] text-xs"
@@ -308,8 +286,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
             <Button
               type="submit"
               variant="primary"
-              loading={lookupPending}
-              disabled={lookupPending || !lookupId.trim()}
+              disabled={!lookupId.trim()}
               data-testid="wallet-lookup-btn"
               className="h-[40px] px-5 text-xs w-full sm:w-auto shrink-0"
             >

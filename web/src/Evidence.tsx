@@ -401,7 +401,7 @@ export default function Evidence() {
                     stroke="var(--text-faint)"
                     fontSize={11}
                     tickLine={false}
-                    tickFormatter={(val) => `৳${(val / 1000000).toFixed(1)}M`}
+                    tickFormatter={(val) => `৳${Math.round(val / 1000)}k`}
                   />
                   <Tooltip
                     formatter={(val: any, name: any) => [formatBDT(Number(val)), name === "netValue" ? "Net Economic Value" : name]}
@@ -451,8 +451,8 @@ export default function Evidence() {
                     <td className="text-right font-mono tnum text-[var(--text)]">
                       {m.wallets_actioned.toLocaleString()}
                     </td>
-                    <td className="text-right font-mono tnum text-[var(--text)]">
-                      {m.users_recovered.toLocaleString()}
+                    <td className="text-right font-mono tnum text-[var(--text)]" data-testid={`users-recovered-${m.strategy}`}>
+                      {Math.round(m.users_recovered).toLocaleString()}
                     </td>
                     <td className="text-right font-mono tnum text-[var(--text-muted)]">
                       {formatBDT(m.cost_bdt)}
