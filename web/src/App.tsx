@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { components } from "./api/schema";
 import { loadSeed, isSampleFallbackUsed, type SeedBundle } from "./seed";
 import Design from "./Design";
@@ -48,6 +48,20 @@ export default function App() {
   const [loginRole, setLoginRole] = useState<"analyst" | "approver">("analyst");
   const [loginError, setLoginError] = useState("");
   const [loginPending, setLoginPending] = useState(false);
+
+  // Profile Dropdown state
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetch("/api/health")
@@ -116,29 +130,25 @@ export default function App() {
       {/* Primary Header */}
       <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Logo & Subtitle */}
+          {/* Minimalist Logo & Brand */}
           <div className="flex items-center gap-6">
             <a href="#/" className="flex items-center gap-2.5 text-decoration-none group">
-              <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--accent)] text-[var(--accent-fg)] flex items-center justify-center font-bold text-sm shadow-[var(--shadow-1)]">
-                WQ
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1b6a5d] text-white flex items-center justify-center shadow-[var(--shadow-1)] ring-1 ring-[var(--border)]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12h3l3-7 4 14 3-7h5" />
+                </svg>
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="t-md font-bold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-                    WhyQuiet
-                  </span>
-                  <span className="text-[var(--text-faint)]">·</span>
-                  <h2 className="t-md font-semibold text-[var(--text)] inline">
-                    Cause Desk
-                  </h2>
-                </div>
-                <div className="text-[11px] text-[var(--text-muted)] -mt-0.5 hidden sm:block">
-                  Dormant-wallet diagnosis console
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                  WhyQuiet
+                </span>
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] inline m-0">
+                  Cause Desk
+                </h2>
               </div>
             </a>
 
-            {/* Navigation Tabs */}
+            {/* Navigation Tabs (Queue / Batches / Evidence) */}
             <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
               <a
                 href="#/"
@@ -170,16 +180,10 @@ export default function App() {
               >
                 Evidence
               </a>
-              <a
-                href="#/design"
-                className="px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold text-[var(--text-faint)] hover:text-[var(--text-muted)] transition-colors"
-              >
-                Design System
-              </a>
             </nav>
           </div>
 
-          {/* Right Area: Theme Toggle, API Status & User Session */}
+          {/* Right Area: Theme Toggle, API Status & Round Profile Avatar Dropdown */}
           <div className="flex items-center gap-2.5">
             {/* Dark / Light mode toggle */}
             <button
@@ -224,14 +228,59 @@ export default function App() {
             </span>
 
             {user ? (
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:block text-right">
-                  <div className="text-xs font-mono text-[var(--text)]">{user.email}</div>
-                  <div className="text-[10px] text-[var(--accent)] capitalize font-semibold">{user.role}</div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs">
-                  Logout
-                </Button>
+              <div className="relative" ref={profileRef}>
+                {/* Round Profile Avatar Icon taking place of Sign In button */}
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((o) => !o)}
+                  data-testid="profile-avatar-btn"
+                  className="w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border-strong)] hover:border-[var(--accent)] flex items-center justify-center text-xs font-bold text-[var(--text)] cursor-pointer shadow-[var(--shadow-1)] transition-colors relative"
+                  title={`${user.email} (${user.role})`}
+                  aria-expanded={profileOpen}
+                  aria-label="User Profile Menu"
+                >
+                  <span className="w-full h-full rounded-full flex items-center justify-center bg-[var(--surface-2)] text-[var(--text)] font-semibold text-xs tracking-wider">
+                    {user.email.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--success)] ring-2 ring-[var(--surface)]" />
+                </button>
+
+                {/* Profile Dropdown with 2 options: 1. Profile Info, 2. Logout */}
+                {profileOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 rounded-[var(--radius)] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-pop)] py-1.5 z-50 animate-in fade-in"
+                    data-testid="profile-dropdown-menu"
+                  >
+                    {/* Option 1: Profile Details */}
+                    <div className="px-3.5 py-2.5 border-b border-[var(--border)]">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Signed in as</div>
+                      <div className="text-xs font-semibold text-[var(--text)] truncate font-mono mt-0.5" title={user.email}>{user.email}</div>
+                      <div className="inline-block mt-1.5">
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]">
+                          {user.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Logout Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        handleLogout();
+                      }}
+                      data-testid="logout-btn"
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface-2)] flex items-center gap-2 cursor-pointer transition-colors border-none bg-transparent"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
+                      Sign Out
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <Button
@@ -273,12 +322,6 @@ export default function App() {
           >
             Evidence
           </a>
-          <a
-            href="#/design"
-            className="text-xs font-semibold px-2.5 py-1 text-[var(--text-faint)]"
-          >
-            Design
-          </a>
           <button
             type="button"
             onClick={() => setMode((m) => (m === "light" ? "dark" : "light"))}
@@ -294,7 +337,7 @@ export default function App() {
         {walletMatch ? (
           <Wallet walletId={walletMatch[1]} onBack={() => (window.location.hash = "#/")} />
         ) : isBatches ? (
-          <Batches />
+          <Batches user={user} onOpenLogin={() => setLoginOpen(true)} />
         ) : isEvidence ? (
           <Evidence />
         ) : (
@@ -379,6 +422,7 @@ export default function App() {
                 type="button"
                 variant={loginRole === "analyst" ? "primary" : "secondary"}
                 size="sm"
+                data-testid="login-role-analyst"
                 onClick={() => {
                   setLoginRole("analyst");
                   setLoginEmail("analyst@whyquiet.demo");
@@ -390,6 +434,7 @@ export default function App() {
                 type="button"
                 variant={loginRole === "approver" ? "primary" : "secondary"}
                 size="sm"
+                data-testid="login-role-approver"
                 onClick={() => {
                   setLoginRole("approver");
                   setLoginEmail("approver@whyquiet.demo");

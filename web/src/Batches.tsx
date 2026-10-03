@@ -15,11 +15,7 @@ import {
 import { loadSeed, type SeedBundle, type Cause } from "./seed";
 import {
   type Batch,
-  type UserSession,
   getStoredUser,
-  setStoredUser,
-  clearStoredUser,
-  login,
   listBatches,
   proposeBatch,
   decideBatch,
@@ -74,20 +70,20 @@ const SAMPLE_BATCHES: Batch[] = [
   },
 ];
 
-export default function Batches() {
+export interface BatchesProps {
+  user?: { email: string; role: "analyst" | "approver" } | null;
+  onOpenLogin?: () => void;
+}
+
+export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
   const [bundle, setBundle] = useState<SeedBundle | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth state
-  const [user, setUser] = useState<UserSession | null>(() => getStoredUser());
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("analyst@whyquiet.demo");
-  const [loginPassword, setLoginPassword] = useState("••••••••");
-  const [loginPending, setLoginPending] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
+  // Sync with propUser or session storage
+  const user = propUser !== undefined ? propUser : getStoredUser();
 
   // Propose state
   const [selectedCause, setSelectedCause] = useState<Cause>("job_exit");
@@ -145,40 +141,6 @@ export default function Batches() {
   const selectedRemedy = bundle?.remedies[selectedCause];
   const unitCost = selectedRemedy?.unit_cost_bdt ?? 15;
   const totalCost = matchingWallets.length * unitCost;
-
-  // Handle Login
-  const handleLoginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginPending(true);
-    setLoginError(null);
-    try {
-      // If offline or dev test, create fallback mock session
-      try {
-        const session = await login(loginEmail, loginPassword);
-        setUser(session);
-      } catch {
-        const mockRole = loginEmail.includes("approver") ? "approver" : "analyst";
-        const mockSession: UserSession = {
-          email: loginEmail,
-          user_id: `user-${Date.now()}`,
-          role: mockRole,
-          access_token: `mock-token-${Date.now()}`,
-        };
-        setStoredUser(mockSession);
-        setUser(mockSession);
-      }
-      setLoginModalOpen(false);
-    } catch (err) {
-      setLoginError(err instanceof Error ? err.message : "Login failed.");
-    } finally {
-      setLoginPending(false);
-    }
-  };
-
-  const handleLogout = () => {
-    clearStoredUser();
-    setUser(null);
-  };
 
   // Handle Propose Batch
   const handlePropose = async () => {
@@ -346,48 +308,15 @@ export default function Batches() {
         </div>
       )}
 
-      {/* Header & Session Control */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="t-2xl font-bold text-[var(--text)]">Remedy Batches &amp; Governance</h1>
-            <Chip tone="accent">2-Role Gating</Chip>
-          </div>
-          <p className="t-xs text-[var(--text-muted)] mt-1">
-            Attributed dormant wallets are grouped by diagnosed cause. Analysts propose remedy batches; approvers authorize campaign dispatch.
-          </p>
+      {/* Header (Clean & Minimalist, Auth lives in navbar) */}
+      <div>
+        <div className="flex items-center gap-2.5">
+          <h1 className="t-2xl font-bold text-[var(--text)]">Remedy Batches &amp; Governance</h1>
+          <Chip tone="accent">2-Role Gating</Chip>
         </div>
-
-        {/* User Session Badge / Sign In Trigger */}
-        <div className="flex items-center gap-2">
-          {user ? (
-            <div className="flex items-center gap-2 bg-[var(--surface-2)] px-3 py-1.5 rounded-[var(--radius)] border border-[var(--border)]" data-testid="user-session-badge">
-              <div className="text-right">
-                <div className="text-xs font-semibold text-[var(--text)]">{user.email}</div>
-                <div className="text-[10px] uppercase font-bold text-[var(--accent)] tracking-wider">
-                  {user.role}
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                onClick={handleLogout}
-                data-testid="logout-btn"
-                className="text-xs px-2 py-1 ml-1"
-              >
-                Sign Out
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="primary"
-              onClick={() => setLoginModalOpen(true)}
-              data-testid="signin-modal-btn"
-              className="text-xs"
-            >
-              Sign In (Demo Access)
-            </Button>
-          )}
-        </div>
+        <p className="t-xs text-[var(--text-muted)] mt-1">
+          Attributed dormant wallets are grouped by diagnosed cause. Analysts propose remedy batches; approvers authorize campaign dispatch.
+        </p>
       </div>
 
       {/* Section 1: Propose Batch (Analyst Flow) */}
@@ -445,15 +374,30 @@ export default function Batches() {
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              onClick={handlePropose}
-              disabled={proposing || matchingWallets.length === 0}
-              data-testid="propose-batch-btn"
-              className="w-full"
-            >
-              {proposing ? "Proposing Batch..." : `Propose Batch (${matchingWallets.length} Wallets)`}
-            </Button>
+            {user?.role === "analyst" ? (
+              <Button
+                variant="primary"
+                onClick={handlePropose}
+                disabled={proposing || matchingWallets.length === 0}
+                data-testid="propose-batch-btn"
+                className="w-full"
+              >
+                {proposing ? "Proposing Batch..." : `Propose Batch (${matchingWallets.length} Wallets)`}
+              </Button>
+            ) : user?.role === "approver" ? (
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] text-center">
+                Signed in as <strong>Approver</strong>. Only Analysts can propose new batches.
+              </div>
+            ) : (
+              <Button
+                variant="secondary"
+                onClick={onOpenLogin}
+                data-testid="signin-modal-btn"
+                className="w-full text-xs"
+              >
+                Sign In as Analyst to Propose
+              </Button>
+            )}
 
             {proposeSuccess && (
               <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(94,200,180,0.15)] border border-[var(--accent)] text-xs text-[var(--accent)]" data-testid="propose-success-msg">
@@ -716,91 +660,6 @@ export default function Batches() {
             </Button>
           </div>
         </div>
-      </Modal>
-
-      {/* Sign In Modal */}
-      <Modal
-        open={loginModalOpen}
-        onClose={() => !loginPending && setLoginModalOpen(false)}
-        title="Sign In to Cause Desk"
-        testid="signin-modal"
-      >
-        <form onSubmit={handleLoginSubmit} className="space-y-4">
-          <p className="text-xs text-[var(--text-muted)]">
-            Select a demo role or enter your credentials. Writes require analyst or approver permissions.
-          </p>
-
-          {/* Quick Role Fillers */}
-          <div className="grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant={loginEmail.includes("analyst") ? "primary" : "ghost"}
-              onClick={() => {
-                setLoginEmail("analyst@whyquiet.demo");
-                setLoginPassword("••••••••");
-              }}
-              data-testid="quick-analyst-btn"
-              className="text-xs py-2 justify-center"
-            >
-              Analyst Role
-            </Button>
-            <Button
-              type="button"
-              variant={loginEmail.includes("approver") ? "primary" : "ghost"}
-              onClick={() => {
-                setLoginEmail("approver@whyquiet.demo");
-                setLoginPassword("••••••••");
-              }}
-              data-testid="quick-approver-btn"
-              className="text-xs py-2 justify-center"
-            >
-              Approver Role
-            </Button>
-          </div>
-
-          <Field label="Email Address" id="login-email-input">
-            <Input
-              id="login-email-input"
-              type="email"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              data-testid="login-email-input"
-              required
-            />
-          </Field>
-
-          <Field label="Password" id="login-password-input" error={loginError || undefined}>
-            <Input
-              id="login-password-input"
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              data-testid="login-password-input"
-              required
-            />
-          </Field>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={() => setLoginModalOpen(false)}
-              disabled={loginPending}
-              className="text-xs"
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              type="submit"
-              disabled={loginPending}
-              data-testid="submit-login-btn"
-              className="text-xs"
-            >
-              {loginPending ? "Signing In..." : "Sign In"}
-            </Button>
-          </div>
-        </form>
       </Modal>
     </div>
   );

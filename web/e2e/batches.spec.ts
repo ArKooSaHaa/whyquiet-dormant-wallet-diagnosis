@@ -13,15 +13,13 @@ test.describe("Batches & Governance Page", () => {
   test("analyst propose flow: displays remedy preview, cost with ASSUMED, and creates batch", async ({ page }) => {
     await page.goto("/#/batches");
 
-    // Sign in as Analyst
-    await page.getByTestId("signin-modal-btn").click();
-    await expect(page.getByTestId("signin-modal")).toBeVisible();
-    await page.getByTestId("quick-analyst-btn").click();
-    await page.getByTestId("submit-login-btn").click();
+    // Sign in as Analyst via navbar or button
+    await page.getByTestId("open-login-btn").click();
+    await page.getByTestId("login-role-analyst").click();
+    await page.getByTestId("login-submit-btn").click();
 
-    // Verify session badge
-    await expect(page.getByTestId("user-session-badge")).toBeVisible();
-    await expect(page.getByTestId("user-session-badge")).toContainText("analyst@whyquiet.demo");
+    // Verify session via profile avatar
+    await expect(page.getByTestId("profile-avatar-btn")).toBeVisible();
 
     // Check eligible wallets & cost calculation
     const eligibleCount = await page.getByTestId("eligible-wallets-count").innerText();
@@ -37,9 +35,9 @@ test.describe("Batches & Governance Page", () => {
     await page.goto("/#/batches");
 
     // Sign in as Analyst who proposed BATCH-8910
-    await page.getByTestId("signin-modal-btn").click();
-    await page.getByTestId("quick-analyst-btn").click();
-    await page.getByTestId("submit-login-btn").click();
+    await page.getByTestId("open-login-btn").click();
+    await page.getByTestId("login-role-analyst").click();
+    await page.getByTestId("login-submit-btn").click();
 
     // Verify self-approval notice on BATCH-8910
     const selfNotice = page.getByTestId("self-approval-notice-BATCH-8910");
@@ -51,12 +49,12 @@ test.describe("Batches & Governance Page", () => {
     await page.goto("/#/batches");
 
     // Sign in as Approver
-    await page.getByTestId("signin-modal-btn").click();
-    await page.getByTestId("quick-approver-btn").click();
-    await page.getByTestId("submit-login-btn").click();
+    await page.getByTestId("open-login-btn").click();
+    await page.getByTestId("login-role-approver").click();
+    await page.getByTestId("login-submit-btn").click();
 
     // Verify Approver session
-    await expect(page.getByTestId("user-session-badge")).toContainText("approver@whyquiet.demo");
+    await expect(page.getByTestId("profile-avatar-btn")).toBeVisible();
 
     // Approve button should be visible for BATCH-8910 (proposed by analyst)
     const approveBtn = page.getByTestId("approve-btn-BATCH-8910");
