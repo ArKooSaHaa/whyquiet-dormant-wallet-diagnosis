@@ -39,12 +39,16 @@ def current_user(
     sb: Annotated[Client, Depends(supabase_client)],
     authorization: Annotated[str | None, Header()] = None,
 ) -> Actor:
+    """Extract and authenticate the user from the Authorization bearer token header."""
     scheme, _, token = (authorization or "").partition(" ")
-    if scheme.lower() != "bearer" or not token:
+    if scheme.lower() != "bearer" or not token.strip():
         raise HTTPException(401, "Missing bearer token")
     try:
         resp = sb.auth.get_user(token)
     except AuthApiError as exc:
+        raise HTTPException(401, "Invalid or expired token") from exc
+    except Exception as exc:
+        logger.warning("Token verification failed: %s", exc)
         raise HTTPException(401, "Invalid or expired token") from exc
     if not resp or not resp.user:
         raise HTTPException(401, "Invalid or expired token")

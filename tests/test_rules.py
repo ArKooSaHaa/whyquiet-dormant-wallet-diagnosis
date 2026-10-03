@@ -83,12 +83,40 @@ def test_money_table_oracle_gte_model():
         assert oracle["wallets_actioned"] >= model["wallets_actioned"]
 
 
-def test_money_table_refusals_cost_zero():
-    # If all wallets are refused in model, actioned = 0, cost = 0, recovery = 0
-    rows = money_table(n_triaged=1000, n_correct=0, n_wrong=0, n_refused=1000)
-    model_rows = [r for r in rows if r["strategy"] == "model"]
-    for r in model_rows:
+def test_baseline_rule_edge_cases():
+    # Negative values
+    assert rule_baseline(-1) == {"fired": False, "action": "none"}
+    assert rule_baseline(-100) == {"fired": False, "action": "none"}
+
+    # Large values
+    assert rule_baseline(52) == {"fired": True, "action": "message_everyone"}
+    assert rule_baseline(1000) == {"fired": True, "action": "message_everyone"}
+
+
+def test_remedies_invalid_causes():
+    assert "unknown_cause" not in REMEDIES
+    assert "random_cause" not in REMEDIES
+    assert "job_churn" not in REMEDIES
+
+
+def test_money_table_zero_triaged():
+    rows = money_table(n_triaged=0, n_correct=0, n_wrong=0, n_refused=0)
+    assert len(rows) == 9
+    for r in rows:
         assert r["wallets_actioned"] == 0
         assert r["users_recovered"] == 0.0
         assert r["cost_bdt"] == 0.0
         assert r["value_bdt"] == 0.0
+
+
+def test_money_table_all_correct_matches_oracle():
+    # When n_correct == n_triaged and 0 wrong and 0 refused, model recovery matches oracle recovery
+    rows = money_table(n_triaged=500, n_correct=500, n_wrong=0, n_refused=0)
+    by_strategy_rate = {(r["strategy"], r["recovery_rate"]): r for r in rows}
+    for rate in (0.01, 0.04, 0.08):
+        model = by_strategy_rate[("model", rate)]
+        oracle = by_strategy_rate[("oracle", rate)]
+        assert model["users_recovered"] == oracle["users_recovered"]
+        assert model["wallets_actioned"] == oracle["wallets_actioned"]
+        assert model["cost_bdt"] == oracle["cost_bdt"]
+        assert model["value_bdt"] == oracle["value_bdt"]

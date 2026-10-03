@@ -89,17 +89,20 @@ WalletIdStr = Annotated[str, StringConstraints(pattern=r"^W-[0-9A-Z]{6}$")]
 
 
 class LoginRequest(BaseModel):
+    # Credentials for Supabase password-based authentication
     email: str
     password: str
 
 
 class LoginResponse(BaseModel):
+    # JWT access token and user metadata returned upon successful login
     access_token: str
     user_id: str
     role: UserRole
 
 
 class Batch(BaseModel):
+    # Batch representation matching the frontend contract (docs/contracts/api.md)
     id: str
     cause: CauseFamily
     remedy_code: str
@@ -114,15 +117,18 @@ class Batch(BaseModel):
 
 
 class CreateBatchRequest(BaseModel):
+    # Proposal payload from an analyst. Wallet IDs must match ^W-[0-9A-Z]{6}$ (1..1000 items)
     cause: CauseFamily
     wallet_ids: list[WalletIdStr] = Field(..., min_length=1, max_length=1000)
 
 
 class DecisionRequest(BaseModel):
-    note: str = Field(..., min_length=1, max_length=500)
+    # Approver decision payload with mandatory audit note (1..500 characters)
+    note: Annotated[str, StringConstraints(min_length=1, max_length=500, strip_whitespace=True)]
 
 
 class ExportBatchResponse(BaseModel):
+    # Export payload containing approved campaign remedy parameters and target wallets
     batch_id: str
     cause: CauseFamily
     remedy_code: str

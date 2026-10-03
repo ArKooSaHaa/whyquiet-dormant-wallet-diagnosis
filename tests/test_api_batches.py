@@ -223,3 +223,100 @@ def test_export_404(fake):
 def test_export_409_not_approved(fake):
     fake.tables["batch_summaries"] = [row()]
     assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 409
+
+
+# ── edge cases & auth hardening ──────────────────────────────────────────────
+@pytest.mark.parametrize(
+    "auth_hdr",
+    [
+        "Basic dXNlcjpwYXNz",
+        "Token abcdef",
+        "Bearer",
+        "Bearer   ",
+        "random_string_no_scheme",
+    ],
+)
+def test_auth_header_malformed(fake, auth_hdr):
+    r = client.post("/api/batches", json=PROPOSE, headers={"Authorization": auth_hdr})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Missing bearer token"
+
+
+def test_whitespace_decision_note_422(fake):
+    r = client.post(f"/api/batches/{BATCH_ID}/approve", json={"note": "    "}, headers=auth("t-approver"))
+    assert r.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "bad_wallet_id",
+    [
+        "W-123",        # too short
+        "W-1234567",    # too long
+        "w-abcdef",     # lowercase
+        "12345678",     # missing prefix
+        "W-!@#$%^",     # special characters
+    ],
+)
+def test_propose_invalid_wallet_id_format(fake, bad_wallet_id):
+    r = client.post(
+        "/api/batches",
+        json={"cause": "job_exit", "wallet_ids": [bad_wallet_id]},
+        headers=auth("t-analyst"),
+    )
+    assert r.status_code == 422
+
+
+def test_full_workflow_consistency(fake):
+    # 1. Propose batch
+    fake.rpc_result = row(cause="migration", remedy_code="migration_agent_referral", unit_cost_paisa=1000)
+    res_prop = client.post(
+        "/api/batches",
+        json={"cause": "migration", "wallet_ids": ["W-MIG001", "W-MIG002"]},
+        headers=auth("t-analyst"),
+    )
+    assert res_prop.status_code == 200
+    batch_data = res_prop.json()
+    assert batch_data["status"] == "proposed"
+    assert batch_data["unit_cost_bdt"] == 10.0
+
+    # 2. Approve batch
+    fake.rpc_result = row(
+        cause="migration",
+        remedy_code="migration_agent_referral",
+        unit_cost_paisa=1000,
+        status="approved",
+        decided_by="bbbb",
+        decided_at="2026-10-03T17:00:00+00:00",
+        decision_note="Batch approved for migration outreach",
+    )
+    res_app = client.post(
+        f"/api/batches/{BATCH_ID}/approve",
+        json={"note": "Batch approved for migration outreach"},
+        headers=auth("t-approver"),
+    )
+    assert res_app.status_code == 200
+    approved_batch = res_app.json()
+    assert approved_batch["status"] == "approved"
+    assert approved_batch["decision_note"] == "Batch approved for migration outreach"
+
+    # 3. Export batch
+    fake.tables["batch_summaries"] = [
+        row(
+            cause="migration",
+            remedy_code="migration_agent_referral",
+            unit_cost_paisa=1000,
+            status="approved",
+            decided_by="bbbb",
+            decided_at="2026-10-03T17:00:00+00:00",
+        )
+    ]
+    fake.tables["batch_wallets"] = [{"wallet_id": "W-MIG001"}, {"wallet_id": "W-MIG002"}]
+    res_exp = client.get(f"/api/batches/{BATCH_ID}/export")
+    assert res_exp.status_code == 200
+    exp_data = res_exp.json()
+    assert exp_data["batch_id"] == BATCH_ID
+    assert exp_data["cause"] == "migration"
+    assert exp_data["remedy_code"] == "migration_agent_referral"
+    assert exp_data["wallet_ids"] == ["W-MIG001", "W-MIG002"]
+    assert exp_data["cost_bdt"] == 20.0  # 10.0 BDT * 2 wallets
+    assert exp_data["approved_by"] == "bbbb"
