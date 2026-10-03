@@ -45,6 +45,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Detailed 8h parallel team execution plans & contracts created in `docs/plans/` (shads.md, hrittika.md, arko.md) and `docs/contracts/` (seed-bundle.md, api.md).
 - Datagen: populations A (4800 train / 1200 test) and B (3000) via `uv run python -m datagen.generate --seed 42` (design: D21).
 - Model (Hrittika Task 2): `src/model/features.py` (20 shape features) and `src/model/train.py` (LightGBM + calibrated refusal, tau/delta tuned on an A-train validation slice), D27/D28. H4 gate passed on a first check: B macro-F1 about 0.86 on attributed wallets vs rule baseline 0.08; refusal about 9% on A-test and 22% on B. Official numbers come from Task 3.
+- Evaluation (Hrittika Task 3): `uv run python scripts/evaluate.py --seed 42` (D29). Seed 42: B macro-F1 0.864 (attributed), A-test 0.962, gap 0.098, refusal 9.3% A-test / 21.7% B, ECE on B 0.100, shuffled-label control 0.162, best single feature `cashin_ratio_last4` 0.373, rule baseline 0.082. Fairness on B: macro-F1 0.84-0.89 and refusal 18-24% across worker types and pay cycles.
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
@@ -53,7 +54,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
 2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Task 3 `scripts/evaluate.py` (report.ml, confusion, fairness), then Task 4 export `web/public/seed.json`.
+3. **Hrittika**: Task 4 export `web/public/seed.json` (calls `scripts/evaluate.py` and `src/rules`).
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)

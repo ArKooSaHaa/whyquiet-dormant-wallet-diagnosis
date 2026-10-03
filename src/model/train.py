@@ -60,9 +60,13 @@ def train(seed: int, data_dir: Path = TRAIN_DIR) -> tuple[lgb.Booster, float, fl
     labels = pd.read_parquet(data_dir / "labels.parquet").set_index("wallet_id")["cause"]
     X = features(wallets, pd.read_parquet(data_dir / "weekly.parquet"))
     y = labels.loc[X.index].map(CAUSES.index).to_numpy()
-    fit, val = train_test_split(np.arange(len(y)), test_size=0.2, stratify=y, random_state=seed)
+    rows, val = train_test_split(np.arange(len(y)), test_size=0.2, stratify=y, random_state=seed)
+    booster = fit(X.iloc[rows], y[rows], seed)
+    return booster, *_tune(predict(booster, X.iloc[val])[0], y[val])
+
+
+def fit(X: pd.DataFrame, y: np.ndarray, seed: int) -> lgb.Booster:
     params = {"objective": "multiclass", "num_class": len(CAUSES), "learning_rate": 0.05, "num_leaves": 15,
               "min_data_in_leaf": 20, "seed": seed, "deterministic": True, "verbose": -1}
-    data = lgb.Dataset(X.iloc[fit], y[fit], weight=compute_sample_weight("balanced", y[fit]))
-    booster = lgb.train(params, data, num_boost_round=100)  # validation log loss is lowest near 100 rounds
-    return booster, *_tune(predict(booster, X.iloc[val])[0], y[val])
+    data = lgb.Dataset(X, y, weight=compute_sample_weight("balanced", y))
+    return lgb.train(params, data, num_boost_round=100)  # validation log loss is lowest near 100 rounds
