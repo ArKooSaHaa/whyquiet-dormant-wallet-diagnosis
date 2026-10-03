@@ -1,0 +1,42 @@
+# secrets / env
+.env*
+!.env.example
+.vercel
+supabase/.temp
+.opencode/
+
+
+# python
+.venv
+__pycache__
+*.pyc
+.ruff_cache
+.pyright
+
+# node
+node_modules
+dist
+playwright-report
+test-results
+
+# local stores / data outputs
+.local
+data/train/*
+!data/train/.gitkeep
+
+# PRIVATE RESEARCH — never publish
+docs/v2/
+docs/v3/*
+docs/01-*/
+docs/02-*/
+docs/archive/
+spikes/
+IDEA_POOL.md
+CONTEXT*.md
+*.pdf
+*.docx
+
+
+# os / editor
+.DS_Store
+Thumbs.db

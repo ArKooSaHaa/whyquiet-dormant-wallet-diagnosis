@@ -1,0 +1,38 @@
+[project]
+name = "whyquiet"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Shads", email = "tamimshahadat15@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.142.2",
+    "lightgbm>=4.7.0",
+    "numpy>=2.4.6",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "pydantic>=2",
+    "scikit-learn>=1.9.1",
+    "supabase>=2.32.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+whyquiet = "whyquiet:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+offline = [
+    "shap>=0.51.0",
+]
