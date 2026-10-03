@@ -134,9 +134,9 @@ docs/report.md as the longer version. No invented facts.
 ```
 
 ## Done checklist
-- [ ] Rules on main by H2; Hrittika confirmed import works
-- [ ] All endpoints in api.md: validation + authn + authz + tests, `make gen-types` committed
-- [ ] Migration applied; demo accounts work on prod
-- [ ] Prod URL: `/seed.json`, `/api/health`, login → propose → approve (other account) → export all work
-- [ ] README + report + consent block on main
-- [ ] `make check` green
+- [x] Rules on main by H2; Hrittika confirmed import works
+- [x] All endpoints in api.md: validation + authn + authz + tests, `make gen-types` committed
+- [x] Migration applied; demo accounts work on prod
+- [x] Prod URL: `/seed.json`, `/api/health`, login → propose → approve (other account) → export all work
+- [x] README + report + consent block on main
+- [x] `make check` green

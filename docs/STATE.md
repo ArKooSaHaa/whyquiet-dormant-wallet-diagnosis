@@ -27,11 +27,11 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - [x] Trained model with SHAP-style reasons (LightGBM `pred_contrib`, D27)
 - [x] Refusal path (model `decide` with reasons; refusal screen renders real refusals from `seed.json`)
 - [x] Money report with the 1% / 4% / 8% recovery sweep (`seed.json` report.money, Evidence page)
-- [x] Console UI (Scaffolded with Cause Desk placeholder)
+- [x] Console UI (Cause Desk delivered: Queue, Wallet Detail, Refusal, Evidence, Batches)
 - [x] Deployed demo URL that works offline from seeded data (Vercel production active)
-- [ ] README with every section required by CONTEXT_v3 section 9
-- [ ] Report draft
-- [ ] Consent/compliance block
+- [x] README with every section required by CONTEXT_v3 section 9
+- [x] Report draft (`docs/report.md`)
+- [x] Consent/compliance block
 - [x] Minimal fairness check (macro-F1 and refusal rate per worker type and per pay cycle; `seed.json` report.fairness)
 - [x] Other mandatory deliverables named in CONTEXT_v3 section 9 (public GitHub repo with continuous commit history; live deployment reachable by judges)
 
@@ -48,15 +48,12 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Evaluation (Hrittika Task 3): `uv run python scripts/evaluate.py --seed 42` (D29). Seed 42: B macro-F1 0.864 (attributed), A-test 0.962, gap 0.098, refusal 9.3% A-test / 21.7% B, ECE on B 0.100, shuffled-label control 0.162, best single feature `cashin_ratio_last4` 0.373, rule baseline 0.082. Fairness on B: macro-F1 0.84-0.89 and refusal 18-24% across worker types and pay cycles.
 - Seed export (Hrittika Task 4): `uv run python scripts/export_seed.py --seed 42` writes `web/public/seed.json` (400 B wallets, 100 refused, 0.9 MB; D30). UI now runs on real data. Money with the ASSUMED constants in `src/rules/money.py`: model net value is below the rule at 1% and 4% recovery and above it at 8% (৳34,947 vs ৳20,100).
 - Seed check (Hrittika Task 5, D33): seeds 1, 2, 3 give B macro-F1 mean 0.868, range 0.847-0.886; refusal 8.3-13.3% A-test vs 18.2-27.7% B (B above A on every seed); shuffled control 0.196-0.233; best single feature 0.363-0.382 (`ticket_ratio` on all three). Seed 42 re-run matches `seed.json` exactly, so no re-export.
+- Frontend (Shads Tasks 0–4): Complete Cause Desk delivered with Claymorphic + Neumorphic dark/light UI, Triage Queue, 26-week decline shape & posterior charts, Refusal screen with refusal proof, Evidence & ML rigor page with confusion matrix & fairness table, Batches & Governance with 2-role auth, 2-person approval, and campaign export.
+- Backend & Rules (Arko Tasks 1–7): Write-path API endpoints with Pydantic v2 schemas, deterministic rules (`baseline.py`, `remedies.py`, `money.py`), Supabase migration (`20261003215000_remedy_batches.sql`) with maker-checker triggers and immutable audit log, real Supabase auth & batch endpoints, 88 unit/integration tests, 27 e2e tests, comprehensive README and evaluation report.
 
-## In progress
-- Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
-- Shads: design system scaffold done (`web/src/design/` + `#/design` gallery with 6 candidate styles); awaiting user's style pick before building screens.
+## Status: All Tasks 1–7 Complete across all 3 team members
+- All deliverables verified with `make check` (green) and `make e2e` (27 passed).
 
-## Next 3 actions (per docs/plans/README.md)
-1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
-2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Tasks 5 and 6 done; results block sent to Arko for the README "Results" section.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)
