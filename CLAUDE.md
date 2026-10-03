@@ -15,6 +15,7 @@ WhyQuiet is a dormant-wallet diagnostic console (Cause Desk) for mobile financia
 - Every new API endpoint needs: input validation, auth check, authorization check, tests.
 - Every database change goes through a migration file. Never edit the DB by hand.
 - Run lint, typecheck and tests before saying a task is done (`make check` green).
+- Never commit, amend, cherry-pick, push, or move a branch ref until the user explicitly says to in their current message. Leave changes uncommitted and ask.
 - Ask before adding a new dependency.
 - Prefer small, reviewable changes. One feature per branch.
 - **Mandatory Ponytail**: All 3 collaborators and agentic tools (Antigravity, OpenCode, Claude Code) MUST use ponytail principles for EVERY feature — radical minimalism, YAGNI, standard library and native platform features before custom abstractions or dependencies, zero speculative bloat.

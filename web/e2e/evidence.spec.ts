@@ -45,6 +45,8 @@ test.describe("Evidence & ML Rigor Page", () => {
     // Money Card & ASSUMED badge
     const moneyCard = page.getByTestId("money-card");
     await expect(moneyCard).toBeVisible();
+    // Net values are thousands of BDT: the axis must not round them to "0.0M"
+    await expect(moneyCard.locator(".recharts-yAxis")).not.toContainText("M");
     await expect(page.getByTestId("assumed-badge")).toHaveText("ASSUMED");
 
     // Check initial Net Value (4% base)
