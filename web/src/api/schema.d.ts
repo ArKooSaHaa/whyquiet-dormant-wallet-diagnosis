@@ -21,6 +21,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login */
+        post: operations["login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Batches */
+        get: operations["list_batches_api_batches_get"];
+        put?: never;
+        /** Create Batch */
+        post: operations["create_batch_api_batches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/batches/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Batch */
+        post: operations["approve_batch_api_batches__id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/batches/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Batch */
+        post: operations["reject_batch_api_batches__id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/batches/{id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Batch */
+        get: operations["export_batch_api_batches__id__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/profile": {
         parameters: {
             query?: never;
@@ -93,15 +179,70 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Batch */
+        Batch: {
+            /** Id */
+            id: string;
+            cause: components["schemas"]["CauseFamily"];
+            /** Remedy Code */
+            remedy_code: string;
+            /** Unit Cost Bdt */
+            unit_cost_bdt: number;
+            /** Wallet Count */
+            wallet_count: number;
+            status: components["schemas"]["BatchStatus"];
+            /** Proposed By */
+            proposed_by: string;
+            /** Decided By */
+            decided_by?: string | null;
+            /** Decided At */
+            decided_at?: string | null;
+            /** Decision Note */
+            decision_note?: string | null;
+            /** Created At */
+            created_at: string;
+        };
+        /**
+         * BatchStatus
+         * @enum {string}
+         */
+        BatchStatus: "proposed" | "approved" | "rejected";
         /**
          * CauseFamily
          * @enum {string}
          */
         CauseFamily: "job_exit" | "migration" | "solved_problem" | "fee_shock" | "supply_failure";
+        /** CreateBatchRequest */
+        CreateBatchRequest: {
+            cause: components["schemas"]["CauseFamily"];
+            /** Wallet Ids */
+            wallet_ids: string[];
+        };
+        /** DecisionRequest */
+        DecisionRequest: {
+            /** Note */
+            note: string;
+        };
         /** ExplainRequest */
         ExplainRequest: {
             /** Wallet Id */
             wallet_id: string;
+        };
+        /** ExportBatchResponse */
+        ExportBatchResponse: {
+            /** Batch Id */
+            batch_id: string;
+            cause: components["schemas"]["CauseFamily"];
+            /** Remedy Code */
+            remedy_code: string;
+            /** Wallet Ids */
+            wallet_ids: string[];
+            /** Cost Bdt */
+            cost_bdt: number;
+            /** Approved By */
+            approved_by: string;
+            /** Approved At */
+            approved_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -120,6 +261,21 @@ export interface components {
              * @default false
              */
             stub: boolean;
+        };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /** LoginResponse */
+        LoginResponse: {
+            /** Access Token */
+            access_token: string;
+            /** User Id */
+            user_id: string;
+            role: components["schemas"]["UserRole"];
         };
         /** ProfileRequest */
         ProfileRequest: {
@@ -196,6 +352,11 @@ export interface components {
              */
             stub: boolean;
         };
+        /**
+         * UserRole
+         * @enum {string}
+         */
+        UserRole: "analyst" | "approver";
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -239,6 +400,193 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+        };
+    };
+    login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_batches_api_batches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"][];
+                };
+            };
+        };
+    };
+    create_batch_api_batches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_batch_api_batches__id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_batch_api_batches__id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Batch"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_batch_api_batches__id__export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExportBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

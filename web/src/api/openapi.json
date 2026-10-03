@@ -23,6 +23,239 @@
         }
       }
     },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login",
+        "operationId": "login_api_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches": {
+      "get": {
+        "summary": "List Batches",
+        "operationId": "list_batches_api_batches_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Batch"
+                  },
+                  "type": "array",
+                  "title": "Response List Batches Api Batches Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Batch",
+        "operationId": "create_batch_api_batches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Batch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{id}/approve": {
+      "post": {
+        "summary": "Approve Batch",
+        "operationId": "approve_batch_api_batches__id__approve_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Batch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{id}/reject": {
+      "post": {
+        "summary": "Reject Batch",
+        "operationId": "reject_batch_api_batches__id__reject_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Batch"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{id}/export": {
+      "get": {
+        "summary": "Export Batch",
+        "operationId": "export_batch_api_batches__id__export_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/profile": {
       "post": {
         "summary": "Profile",
@@ -178,6 +411,94 @@
   },
   "components": {
     "schemas": {
+      "Batch": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "cause": {
+            "$ref": "#/components/schemas/CauseFamily"
+          },
+          "remedy_code": {
+            "type": "string",
+            "title": "Remedy Code"
+          },
+          "unit_cost_bdt": {
+            "type": "number",
+            "title": "Unit Cost Bdt"
+          },
+          "wallet_count": {
+            "type": "integer",
+            "title": "Wallet Count"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BatchStatus"
+          },
+          "proposed_by": {
+            "type": "string",
+            "title": "Proposed By"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Note"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "cause",
+          "remedy_code",
+          "unit_cost_bdt",
+          "wallet_count",
+          "status",
+          "proposed_by",
+          "created_at"
+        ],
+        "title": "Batch"
+      },
+      "BatchStatus": {
+        "type": "string",
+        "enum": [
+          "proposed",
+          "approved",
+          "rejected"
+        ],
+        "title": "BatchStatus"
+      },
       "CauseFamily": {
         "type": "string",
         "enum": [
@@ -188,6 +509,44 @@
           "supply_failure"
         ],
         "title": "CauseFamily"
+      },
+      "CreateBatchRequest": {
+        "properties": {
+          "cause": {
+            "$ref": "#/components/schemas/CauseFamily"
+          },
+          "wallet_ids": {
+            "items": {
+              "type": "string",
+              "pattern": "^W-[0-9A-Z]{6}$"
+            },
+            "type": "array",
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Wallet Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cause",
+          "wallet_ids"
+        ],
+        "title": "CreateBatchRequest"
+      },
+      "DecisionRequest": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "note"
+        ],
+        "title": "DecisionRequest"
       },
       "ExplainRequest": {
         "properties": {
@@ -201,6 +560,51 @@
           "wallet_id"
         ],
         "title": "ExplainRequest"
+      },
+      "ExportBatchResponse": {
+        "properties": {
+          "batch_id": {
+            "type": "string",
+            "title": "Batch Id"
+          },
+          "cause": {
+            "$ref": "#/components/schemas/CauseFamily"
+          },
+          "remedy_code": {
+            "type": "string",
+            "title": "Remedy Code"
+          },
+          "wallet_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Wallet Ids"
+          },
+          "cost_bdt": {
+            "type": "number",
+            "title": "Cost Bdt"
+          },
+          "approved_by": {
+            "type": "string",
+            "title": "Approved By"
+          },
+          "approved_at": {
+            "type": "string",
+            "title": "Approved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "batch_id",
+          "cause",
+          "remedy_code",
+          "wallet_ids",
+          "cost_bdt",
+          "approved_by",
+          "approved_at"
+        ],
+        "title": "ExportBatchResponse"
       },
       "HTTPValidationError": {
         "properties": {
@@ -241,6 +645,46 @@
           "store"
         ],
         "title": "HealthResponse"
+      },
+      "LoginRequest": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "LoginRequest"
+      },
+      "LoginResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "user_id": {
+            "type": "string",
+            "title": "User Id"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token",
+          "user_id",
+          "role"
+        ],
+        "title": "LoginResponse"
       },
       "ProfileRequest": {
         "properties": {
@@ -441,6 +885,14 @@
           "generated_text"
         ],
         "title": "TriageResponse"
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "analyst",
+          "approver"
+        ],
+        "title": "UserRole"
       },
       "ValidationError": {
         "properties": {

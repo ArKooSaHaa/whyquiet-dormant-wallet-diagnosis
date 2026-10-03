@@ -8,7 +8,7 @@ dev:
 
 gen-types:
 	$(PY) scripts/export_openapi.py
-	cd web && npx openapi-typescript src/api/openapi.json -o src/api/schema.d.ts
+	cd web && npx -y openapi-typescript src/api/openapi.json -o src/api/schema.d.ts
 
 check:
 	uv run ruff check src tests datagen scripts api
