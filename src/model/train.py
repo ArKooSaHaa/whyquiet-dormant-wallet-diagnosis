@@ -1,4 +1,4 @@
-"""LightGBM cause classifier with calibrated refusal (decision D22). Reads data/train only."""
+"""LightGBM cause classifier with calibrated refusal (decision D27). Reads data/train only."""
 
 from pathlib import Path
 
@@ -12,7 +12,7 @@ from src.model.features import features
 
 CAUSES = ["job_exit", "migration", "solved_problem", "fee_shock", "supply_failure"]  # contract order
 TRAIN_DIR = Path(__file__).resolve().parents[2] / "data" / "train"
-ACCURACY_FLOOR = 0.97  # ASSUMED (D23): attributed wallets must be this accurate on the validation slice
+ACCURACY_FLOOR = 0.97  # ASSUMED (D28): attributed wallets must be this accurate on the validation slice
 TAUS = np.round(np.arange(0.50, 0.901, 0.05), 2)
 DELTAS = np.round(np.arange(0.10, 0.401, 0.05), 2)
 

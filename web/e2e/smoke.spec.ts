@@ -5,4 +5,6 @@ test("smoke: title and api badge", async ({ page }) => {
   await expect(page).toHaveTitle(/WhyQuiet/);
   await expect(page.getByTestId("api-badge")).toHaveText(/API ok|API down/);
   await expect(page.getByRole("heading", { name: "Cause Desk" })).toBeVisible();
+  await expect(page.getByTestId("sample-banner")).toBeVisible();
 });
+

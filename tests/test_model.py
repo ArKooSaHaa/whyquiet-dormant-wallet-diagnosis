@@ -1,4 +1,4 @@
-"""src/model: features, LightGBM classifier and calibrated refusal (decision D22)."""
+"""src/model: features, LightGBM classifier and calibrated refusal (decision D27)."""
 
 from pathlib import Path
 

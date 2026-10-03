@@ -1,4 +1,4 @@
-"""Shape features: one row per dormant wallet from its weekly series (decision D22).
+"""Shape features: one row per dormant wallet from its weekly series (decision D27).
 
 D = first silent week. "Base" = active history before D-8 (all history if under 4 weeks). Ratios are taken
 against the wallet's own base so they survive population B's lower activity. Missing values become -1.

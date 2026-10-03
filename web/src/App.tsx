@@ -1,41 +1,451 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import type { components } from "./api/schema";
+import { loadSeed, isSampleFallbackUsed, type SeedBundle } from "./seed";
+import Design from "./Design";
+import Queue from "./Queue";
+import Wallet from "./Wallet";
+import Batches from "./Batches";
+import Evidence from "./Evidence";
+import { Button, Modal, Field, Input, Chip } from "./design/ui";
 
 type Health = components["schemas"]["HealthResponse"];
 
+function useHash() {
+  const [hash, setHash] = useState(() => window.location.hash || "#/");
+  useEffect(() => {
+    const on = () => setHash(window.location.hash || "#/");
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+  return hash;
+}
 
 export default function App() {
+  const hash = useHash();
   const [health, setHealth] = useState<Health | null>(null);
+  const [seed, setSeed] = useState<SeedBundle | null>(null);
+  const [isSample, setIsSample] = useState(false);
+
+  // Global Theme Mode: Light mode by default when opened
+  const [mode, setMode] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("wq_mode");
+    return (saved as "light" | "dark") || "light";
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-mode", mode);
+    localStorage.setItem("wq_mode", mode);
+  }, [mode]);
+
+  // Demo Auth State (in sessionStorage)
+  const [user, setUser] = useState<{ email: string; role: "analyst" | "approver" } | null>(() => {
+    const saved = sessionStorage.getItem("wq_user");
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("analyst@whyquiet.demo");
+  const [loginPassword, setLoginPassword] = useState("••••••••");
+  const [loginRole, setLoginRole] = useState<"analyst" | "approver">("analyst");
+  const [loginError, setLoginError] = useState("");
+  const [loginPending, setLoginPending] = useState(false);
+
+  // Profile Dropdown state
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     fetch("/api/health")
       .then((r) => (r.ok ? r.json() : null))
       .then(setHealth)
       .catch(() => setHealth(null));
+
+    loadSeed()
+      .then((bundle) => {
+        setSeed(bundle);
+        setIsSample(isSampleFallbackUsed() || bundle.meta.model_version === "sample");
+      })
+      .catch(() => {});
   }, []);
 
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+
+    if (!loginEmail.trim()) {
+      setLoginError("Email is required.");
+      return;
+    }
+    if (!loginEmail.includes("@")) {
+      setLoginError("Please enter a valid email address.");
+      return;
+    }
+
+    setLoginPending(true);
+    setTimeout(() => {
+      const newUser = { email: loginEmail.trim(), role: loginRole };
+      sessionStorage.setItem("wq_user", JSON.stringify(newUser));
+      setUser(newUser);
+      setLoginPending(false);
+      setLoginOpen(false);
+    }, 400);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem("wq_user");
+    setUser(null);
+  };
+
+  // Route matchers
+  const isDesign = hash.startsWith("#/design");
+  const walletMatch = hash.match(/^#\/w\/([A-Za-z0-9_-]+)/);
+  const isBatches = hash.startsWith("#/batches");
+  const isEvidence = hash.startsWith("#/evidence");
+  const isQueue = !isDesign && !walletMatch && !isBatches && !isEvidence;
+
+  if (isDesign) return <Design />;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <main className="mx-auto max-w-4xl px-6 py-16">
-        <h1 className="text-4xl font-bold">WhyQuiet</h1>
-        <p className="mt-2 text-slate-400">Dormant-wallet diagnosis</p>
-        <span
-          data-testid="api-badge"
-          className={
-            health
-              ? "mt-4 inline-block rounded-full bg-emerald-900 px-3 py-1 text-sm text-emerald-300"
-              : "mt-4 inline-block rounded-full bg-red-900 px-3 py-1 text-sm text-red-300"
-          }
+    <div className="theme-root flex flex-col min-h-screen" data-mode={mode}>
+      {/* Sample Banner (Task 0 requirement & smoke test) */}
+      {isSample && (
+        <div
+          data-testid="sample-banner"
+          className="t-xs text-center font-medium"
+          style={{ background: "var(--warning-soft)", color: "var(--warning)", padding: "6px 16px" }}
         >
-          {health ? "API ok" : "API down"}
-        </span>
-        <section className="mt-10 rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-xl font-semibold">Cause Desk</h2>
-          <p className="mt-2 text-slate-400">
-            Operator console placeholder — triage list and decline shape arrive with the model.
-          </p>
-        </section>
+          Sample data mode ({seed?.wallets.length ?? 0} wallets loaded from seed.sample.json)
+        </div>
+      )}
+
+      {/* Primary Header */}
+      <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Minimalist Logo & Brand */}
+          <div className="flex items-center gap-6">
+            <a href="#/" className="flex items-center gap-2.5 text-decoration-none group">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--accent)] to-[#1b6a5d] text-white flex items-center justify-center shadow-[var(--shadow-1)] ring-1 ring-[var(--border)]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12h3l3-7 4 14 3-7h5" />
+                </svg>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                  WhyQuiet
+                </span>
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] inline m-0">
+                  Cause Desk
+                </h2>
+              </div>
+            </a>
+
+            {/* Navigation Tabs (Queue / Batches / Evidence) */}
+            <nav className="hidden md:flex items-center gap-1" aria-label="Main Navigation">
+              <a
+                href="#/"
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
+                  isQueue
+                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                Triage Queue
+              </a>
+              <a
+                href="#/batches"
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
+                  isBatches
+                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                Batches
+              </a>
+              <a
+                href="#/evidence"
+                className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
+                  isEvidence
+                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                Evidence
+              </a>
+            </nav>
+          </div>
+
+          {/* Right Area: Theme Toggle, API Status & Round Profile Avatar Dropdown */}
+          <div className="flex items-center gap-2.5">
+            {/* Dark / Light mode toggle */}
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === "light" ? "dark" : "light"))}
+              className="btn btn-secondary btn-sm h-[32px] px-2.5 flex items-center gap-1.5 cursor-pointer text-xs"
+              data-testid="mode-toggle"
+              title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}
+              aria-label="Toggle dark/light mode"
+            >
+              {mode === "light" ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="1" x2="12" y2="3" />
+                    <line x1="12" y1="21" x2="12" y2="23" />
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                    <line x1="1" y1="12" x2="3" y2="12" />
+                    <line x1="21" y1="12" x2="23" y2="12" />
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                  </svg>
+                  <span className="hidden sm:inline font-medium">Light</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                  </svg>
+                  <span className="hidden sm:inline font-medium">Dark</span>
+                </>
+              )}
+            </button>
+
+            <span
+              className={`chip ${health ? "chip-success" : "chip-danger"}`}
+              data-testid="api-badge"
+              title={health ? `API Online (${health.version})` : "API Offline (using seed cache)"}
+            >
+              {health ? "API ok" : "API down"}
+            </span>
+
+            {user ? (
+              <div className="relative" ref={profileRef}>
+                {/* Round Profile Avatar Icon taking place of Sign In button */}
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen((o) => !o)}
+                  data-testid="profile-avatar-btn"
+                  className="w-8 h-8 rounded-full bg-[var(--surface-2)] border border-[var(--border-strong)] hover:border-[var(--accent)] flex items-center justify-center text-xs font-bold text-[var(--text)] cursor-pointer shadow-[var(--shadow-1)] transition-colors relative"
+                  title={`${user.email} (${user.role})`}
+                  aria-expanded={profileOpen}
+                  aria-label="User Profile Menu"
+                >
+                  <span className="w-full h-full rounded-full flex items-center justify-center bg-[var(--surface-2)] text-[var(--text)] font-semibold text-xs tracking-wider">
+                    {user.email.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--success)] ring-2 ring-[var(--surface)]" />
+                </button>
+
+                {/* Profile Dropdown with 2 options: 1. Profile Info, 2. Logout */}
+                {profileOpen && (
+                  <div
+                    className="absolute right-0 mt-2 w-56 rounded-[var(--radius)] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-pop)] py-1.5 z-50 animate-in fade-in"
+                    data-testid="profile-dropdown-menu"
+                  >
+                    {/* Option 1: Profile Details */}
+                    <div className="px-3.5 py-2.5 border-b border-[var(--border)]">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Signed in as</div>
+                      <div className="text-xs font-semibold text-[var(--text)] truncate font-mono mt-0.5" title={user.email}>{user.email}</div>
+                      <div className="inline-block mt-1.5">
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent)]">
+                          {user.role}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Logout Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        handleLogout();
+                      }}
+                      data-testid="logout-btn"
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-medium text-[var(--danger)] hover:bg-[var(--surface-2)] flex items-center gap-2 cursor-pointer transition-colors border-none bg-transparent"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                      </svg>
+                      Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setLoginOpen(true)}
+                data-testid="open-login-btn"
+                className="text-xs"
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Navigation bar */}
+        <div className="md:hidden flex items-center justify-around border-t border-[var(--border)] py-2 px-3 bg-[var(--surface-2)]">
+          <a
+            href="#/"
+            className={`text-xs font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] ${
+              isQueue ? "bg-[var(--surface)] text-[var(--accent)]" : "text-[var(--text-muted)]"
+            }`}
+          >
+            Queue
+          </a>
+          <a
+            href="#/batches"
+            className={`text-xs font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] ${
+              isBatches ? "bg-[var(--surface)] text-[var(--accent)]" : "text-[var(--text-muted)]"
+            }`}
+          >
+            Batches
+          </a>
+          <a
+            href="#/evidence"
+            className={`text-xs font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] ${
+              isEvidence ? "bg-[var(--surface)] text-[var(--accent)]" : "text-[var(--text-muted)]"
+            }`}
+          >
+            Evidence
+          </a>
+          <button
+            type="button"
+            onClick={() => setMode((m) => (m === "light" ? "dark" : "light"))}
+            className="text-xs font-semibold px-2 py-1 text-[var(--text-muted)] border-none bg-transparent cursor-pointer"
+          >
+            {mode === "light" ? "☀" : "☾"}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Routed Content */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {walletMatch ? (
+          <Wallet walletId={walletMatch[1]} onBack={() => (window.location.hash = "#/")} />
+        ) : isBatches ? (
+          <Batches user={user} onOpenLogin={() => setLoginOpen(true)} />
+        ) : isEvidence ? (
+          <Evidence />
+        ) : (
+          <Queue onNavigate={(wId) => (window.location.hash = `#/w/${wId}`)} />
+        )}
       </main>
+
+      {/* Footer Strip with Honesty Line */}
+      <footer className="border-t border-[var(--border)] bg-[var(--surface)] py-4 px-4 sm:px-6 mt-auto">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+          <div className="text-center md:text-left">
+            <span className="font-semibold text-[var(--text)]">Honesty Principle: </span>
+            <span>
+              {seed?.meta.honesty_line ||
+                "Real ledgers contain no cause label. We train on simulated causes and evaluate on shifted population B. We claim robustness to distribution shift in simulation, not real-world accuracy."}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <Chip tone="warning">ASSUMED</Chip>
+            <span className="font-mono text-[11px] text-[var(--text-faint)]">
+              Model: {seed?.meta.model_version || "sample"} · τ={seed?.meta.tau || 0.5} · δ={seed?.meta.delta || 0.1}
+            </span>
+          </div>
+        </div>
+      </footer>
+
+      {/* Login Dialog Modal */}
+      <Modal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        title="Sign In to Cause Desk"
+        testid="login-modal"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button variant="ghost" size="sm" onClick={() => setLoginOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={loginPending}
+              disabled={loginPending}
+              onClick={handleLoginSubmit}
+              data-testid="login-submit-btn"
+            >
+              Sign In
+            </Button>
+          </div>
+        }
+      >
+        <form onSubmit={handleLoginSubmit} className="space-y-4" noValidate>
+          <Field label="Email Address" id="login-email" error={loginError || undefined}>
+            <Input
+              id="login-email"
+              type="email"
+              data-testid="login-email"
+              value={loginEmail}
+              onChange={(e) => {
+                setLoginEmail(e.target.value);
+                if (loginError) setLoginError("");
+              }}
+              invalid={Boolean(loginError)}
+              autoFocus
+            />
+          </Field>
+
+          <Field label="Password" id="login-password">
+            <Input
+              id="login-password"
+              type="password"
+              data-testid="login-password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+            />
+          </Field>
+
+          <div className="space-y-1.5">
+            <div className="text-xs font-semibold text-[var(--text-muted)]">Demo Persona Quick Select</div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={loginRole === "analyst" ? "primary" : "secondary"}
+                size="sm"
+                data-testid="login-role-analyst"
+                onClick={() => {
+                  setLoginRole("analyst");
+                  setLoginEmail("analyst@whyquiet.demo");
+                }}
+              >
+                Analyst
+              </Button>
+              <Button
+                type="button"
+                variant={loginRole === "approver" ? "primary" : "secondary"}
+                size="sm"
+                data-testid="login-role-approver"
+                onClick={() => {
+                  setLoginRole("approver");
+                  setLoginEmail("approver@whyquiet.demo");
+                }}
+              >
+                Approver
+              </Button>
+            </div>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
