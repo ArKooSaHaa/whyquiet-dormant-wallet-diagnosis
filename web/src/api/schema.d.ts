@@ -107,74 +107,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/profile": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Profile */
-        post: operations["profile_api_profile_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/triage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Triage */
-        post: operations["triage_api_triage_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/explain": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Explain */
-        post: operations["explain_api_explain_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/refuse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refuse */
-        post: operations["refuse_api_refuse_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -222,11 +154,6 @@ export interface components {
         DecisionRequest: {
             /** Note */
             note: string;
-        };
-        /** ExplainRequest */
-        ExplainRequest: {
-            /** Wallet Id */
-            wallet_id: string;
         };
         /** ExportBatchResponse */
         ExportBatchResponse: {
@@ -277,81 +204,11 @@ export interface components {
             user_id: string;
             role: components["schemas"]["UserRole"];
         };
-        /** ProfileRequest */
-        ProfileRequest: {
-            /** Wallet Id */
-            wallet_id: string;
-        };
-        /** Reason */
-        Reason: {
-            /** Feature */
-            feature: string;
-            /** Contribution */
-            contribution: number;
-            /**
-             * Direction
-             * @description 'toward' or 'against' the attributed cause
-             */
-            direction: string;
-        };
-        /** RefuseRequest */
-        RefuseRequest: {
-            /** Wallet Id */
-            wallet_id: string;
-        };
-        /** RefuseResponse */
-        RefuseResponse: {
-            verdict: components["schemas"]["Verdict"];
-            /** Cause */
-            cause?: null;
-            /** Posterior */
-            posterior: {
-                [key: string]: number;
-            };
-            /** Reasons */
-            reasons: components["schemas"]["Reason"][];
-            /** Assumptions */
-            assumptions: string[];
-            /** Generated Text */
-            generated_text: string | null;
-            /** Refusal Reasons */
-            refusal_reasons: string[];
-            /**
-             * Stub
-             * @default false
-             */
-            stub: boolean;
-        };
         /**
          * StoreKind
          * @enum {string}
          */
         StoreKind: "local" | "supabase";
-        /** TriageRequest */
-        TriageRequest: {
-            /** Wallet Id */
-            wallet_id: string;
-        };
-        /** TriageResponse */
-        TriageResponse: {
-            verdict: components["schemas"]["Verdict"];
-            cause: components["schemas"]["CauseFamily"] | null;
-            /** Posterior */
-            posterior: {
-                [key: string]: number;
-            };
-            /** Reasons */
-            reasons: components["schemas"]["Reason"][];
-            /** Assumptions */
-            assumptions: string[];
-            /** Generated Text */
-            generated_text: string | null;
-            /**
-             * Stub
-             * @default false
-             */
-            stub: boolean;
-        };
         /**
          * UserRole
          * @enum {string}
@@ -370,11 +227,6 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
-        /**
-         * Verdict
-         * @enum {string}
-         */
-        Verdict: "attributed" | "refused";
     };
     responses: never;
     parameters: never;
@@ -593,138 +445,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
-                };
-            };
-        };
-    };
-    profile_api_profile_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ProfileRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TriageResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    triage_api_triage_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TriageRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TriageResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    explain_api_explain_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ExplainRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TriageResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refuse_api_refuse_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RefuseRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RefuseResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

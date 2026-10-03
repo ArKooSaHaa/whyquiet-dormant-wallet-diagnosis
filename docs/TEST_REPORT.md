@@ -35,8 +35,8 @@ Status key: **OPEN**, **FIXED** (fixed locally, not yet merged).
 | 7 | **Arko** (`Makefile`) | **FIXED** (Hrittika, D36) | `make dev` started the API on port 8000, but Vite forwards `/api` to 8008 (`web/vite.config.ts`), so every local API call failed. | With `make dev`, the header showed "API down". | Makefile, README and the 5 context files now use port 8008. Verified: `localhost:5173/api/health` returns ok through the proxy. |
 | 8 | **Shads** (Task 3) | OPEN | Money chart Y axis shows "৳0.0M" on every tick (`web/src/Evidence.tsx:403` divides by 1,000,000; values are in thousands). Already listed in STATE.md blockers. | Screenshot of Evidence page: all four ticks read ৳0.0M. | Use `formatBDT(val)` or divide by 1000 and show `k`. |
 | 9 | **Shads** | OPEN | Table shows fractional people, e.g. "84.41" recovered users. | Evidence money table, 4% row. | Round for display (`Math.round`) or show one decimal with "expected" in the header. |
-| 10 | **Arko** (Task 6) | OPEN | The old stub endpoints contradict the product and break the project rule "every endpoint needs validation, auth and tests". `/api/triage`, `/profile`, `/explain`, `/refuse` return the same hard-coded answer for any input. `/triage` writes to the Supabase audit table with no auth. `599818d` ("harden API") did not touch them. | `POST /api/triage {"wallet_id":"anything at all"}` returns "attributed: job_exit" at 0.30 confidence, which the model's own 0.80 bar would refuse. The frontend does not use them. | Hide them with `include_in_schema=False` and stop `/triage` writing to the audit log, or remove them (ask the team first, since the rules say not to delete files). |
-| 11 | **Arko** (`src/api/auth.py`, new in `599818d`) | OPEN | The new `except Exception` in `current_user` turns a Supabase outage into **401 "Invalid or expired token"**. The contract (`docs/contracts/api.md`) says Supabase down = 503. | If Supabase is paused (free tier pauses after 7 days), a signed-in user is told their token is bad instead of seeing the "write path offline" banner. | Catch only `AuthApiError` as 401; let other errors become 503 (`HTTPException(503, "Write path offline")`). |
+| 10 | **Arko** (Task 6) | **FIXED** (Hrittika, D40: stubs removed) | The old stub endpoints contradict the product and break the project rule "every endpoint needs validation, auth and tests". `/api/triage`, `/profile`, `/explain`, `/refuse` return the same hard-coded answer for any input. `/triage` writes to the Supabase audit table with no auth. `599818d` ("harden API") did not touch them. | `POST /api/triage {"wallet_id":"anything at all"}` returns "attributed: job_exit" at 0.30 confidence, which the model's own 0.80 bar would refuse. The frontend does not use them. | Hide them with `include_in_schema=False` and stop `/triage` writing to the audit log, or remove them (ask the team first, since the rules say not to delete files). |
+| 11 | **Arko** (`src/api/auth.py`, new in `599818d`) | **FIXED** (Hrittika, D40: one 503 handler, tests added) | The new `except Exception` in `current_user` turns a Supabase outage into **401 "Invalid or expired token"**. The contract (`docs/contracts/api.md`) says Supabase down = 503. | If Supabase is paused (free tier pauses after 7 days), a signed-in user is told their token is bad instead of seeing the "write path offline" banner. | Catch only `AuthApiError` as 401; let other errors become 503 (`HTTPException(503, "Write path offline")`). |
 
 ## 3. Missing or out of date
 
@@ -49,6 +49,7 @@ Status key: **OPEN**, **FIXED** (fixed locally, not yet merged).
 | 16 | **Arko** (`README.md`) | **FIXED** (D36, D37) | README said the API runs on ":8008 / :8000" (fixed) and says the Vercel deploy is live (still wrong until #1). | Update after redeploy. |
 | 17 | **All** (`docs/STATE.md`) | **FIXED** (D37: STATE points at the new deploy) | STATE.md says "Vercel production active" and ticks "Deployed demo URL that works offline". Not true right now. | Untick until #1 is fixed. |
 | 18 | **Hrittika** | OPEN | `docs/superpowers/` (datagen spec and plan) is committed to git, against our rule to keep those docs local. | `git rm --cached -r docs/superpowers` and add it to `.gitignore`. |
+| 18b | **Shads** | OPEN | Queue quick lookup still calls `/api/triage`, which no longer exists (D40), so each lookup makes one 404 request before falling back to `seed.json`. Unknown IDs show "No anomalous lockups detected", which the model never said. | Delete the `fetch("/api/triage")` block in `web/src/Queue.tsx`; for an ID not in the seed, show "not in this sample". |
 | 19 | **Shads** (minor) | OPEN | JS bundle is 714 kB (Vite warns above 500 kB). | Optional: lazy-load the Evidence page (Recharts) with `import()`. |
 | 20 | **Team decision** (Arko owns `money.py`) | OPEN | Not a code bug: at the base 4% recovery rate the model earns less than the simple rule (৳4,560 vs ৳9,300). It wins only at 8%. README states this honestly, but judges will ask. | Agree on the answer for the demo script. |
 
@@ -59,15 +60,15 @@ Lint, types and tests pass; the API contract did not change. Good: rejects a bla
 | Owner | Issue |
 | --- | --- |
 | Arko | Pushed straight to `main` with no pull request. Team rule: one feature per branch, reviewed. |
-| Arko | New bug #11 above (Supabase outage reported as 401 instead of 503). |
-| Arko | Deleted `test_money_table_refusals_cost_zero` (refused wallets cost nothing). That was the only test tying refusal to money; the new zero-wallet test does not cover it. Please restore it. |
-| Arko | No `docs/DECISIONS.md` entry for the change (project rule). |
+| Arko (**FIXED**, D40) | New bug #11 above (Supabase outage reported as 401 instead of 503). |
+| Arko (**FIXED**, D40) | Deleted `test_money_table_refusals_cost_zero` (refused wallets cost nothing). That was the only test tying refusal to money; the new zero-wallet test does not cover it. Please restore it. |
+| Arko (**FIXED**, D39) | No `docs/DECISIONS.md` entry for the change (project rule). |
 | Arko | `test_full_workflow_consistency` only checks that the fake returns what the test told it to return, so it adds little. The added `#` comments mostly repeat the function names. |
-| Arko | Items #1, #10 from this report are still open. |
+| Arko (**FIXED**, D37, D40) | Items #1, #10 from this report are still open. |
 
 ## 5. Suggested order
 
-1. **Arko:** #11 and restore the deleted test, then #10. (#1, #1b, #16 done in D37.)
+1. **Arko:** all items done (#1, #1b, #7, #10, #11, #12, #16 in D36, D37, D40). Open team question: #20.
 2. **Shads:** #2, #3, #5, #6 together (one branch), then #4, #8, #9, #13, #15.
 3. **Hrittika:** #18; paste keys into `.env` once Arko/Shads share them; merge the D36 fix (#7, #12).
 4. **Shads + Arko:** #14 on prod, then everyone updates STATE.md (#17).

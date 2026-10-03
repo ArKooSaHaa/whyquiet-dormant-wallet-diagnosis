@@ -1,9 +1,10 @@
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from postgrest.exceptions import APIError
-from supabase_auth.errors import AuthApiError
+from supabase_auth.errors import AuthApiError, AuthRetryableError
 
 from src.api.auth import supabase_client
 from src.api.main import app
@@ -320,3 +321,23 @@ def test_full_workflow_consistency(fake):
     assert exp_data["wallet_ids"] == ["W-MIG001", "W-MIG002"]
     assert exp_data["cost_bdt"] == 20.0  # 10.0 BDT * 2 wallets
     assert exp_data["approved_by"] == "bbbb"
+
+
+# ── Supabase unreachable -> 503 "Write path offline", never 401 (contract) ──────
+def _down(err):
+    def raise_(*_a, **_k):
+        raise err
+    return raise_
+
+
+@pytest.mark.parametrize("err", [httpx.ConnectError("down"), AuthRetryableError("down", 503)])
+def test_503_when_auth_unreachable(fake, err):
+    fake.auth.get_user = _down(err)
+    r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
+    assert r.status_code == 503
+    assert r.json() == {"detail": "Write path offline"}
+
+
+def test_503_when_db_unreachable(fake):
+    fake.table = _down(httpx.ConnectError("down"))
+    assert client.get("/api/batches").status_code == 503
