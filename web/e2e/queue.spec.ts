@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 
 test.describe("Queue Page & Triage", () => {
   test.beforeEach(async ({ page }) => {
+    // Pin to seed.sample.json: these tests use known sample wallets; real-data.spec.ts covers seed.json.
+    await page.route("**/seed.json", (route) => route.fulfill({ status: 404 }));
     await page.goto("/#/");
   });
 
