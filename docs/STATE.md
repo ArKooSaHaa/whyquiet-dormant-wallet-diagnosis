@@ -47,6 +47,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
+- Shads: design system scaffold done (`web/src/design/` + `#/design` gallery with 6 candidate styles); awaiting user's style pick before building screens.
 
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
