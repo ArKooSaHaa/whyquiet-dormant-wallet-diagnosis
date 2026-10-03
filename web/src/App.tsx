@@ -421,7 +421,6 @@ export default function App() {
           </Field>
 
           <div className="space-y-1.5">
-            <div className="text-xs font-semibold text-[var(--text-muted)]">Demo Persona Quick Select (fills email and public demo password)</div>
             <div className="flex gap-2">
               <Button
                 type="button"
