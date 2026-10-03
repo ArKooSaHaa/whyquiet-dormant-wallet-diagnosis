@@ -56,7 +56,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
 2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Tasks 5 and 6 done; results block written, to be sent to Arko for the README "Results" section.
+3. **Hrittika**: Tasks 5 and 6 done; results block sent to Arko for the README "Results" section.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)

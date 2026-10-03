@@ -144,4 +144,4 @@ feature, refusal A/B, ECE, fairness table, plus the A1/A3 honesty sentences verb
 - [x] `uv run pytest -q` green incl. no-truth-import test (88 passed)
 - [x] Refusal rate > 0 on A and B; B ≥ A (9.3% A-test, 21.7% B)
 - [x] Shuffled control ≈ chance; best single feature ≪ full model (0.162 and 0.373 vs 0.864)
-- [ ] Results block sent to Arko
+- [x] Results block sent to Arko
