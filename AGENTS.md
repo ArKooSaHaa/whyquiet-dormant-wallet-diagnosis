@@ -27,7 +27,7 @@ WhyQuiet is a dormant-wallet diagnostic console (Cause Desk) for mobile financia
 - Do not delete files. No new features after hour 42 (bug fixes only).
 
 ## Commands
-- Dev: `make dev` (or `uv run uvicorn src.api.main:app --port 8000` & `cd web && npm run dev`)
+- Dev: `make dev` (or `uv run --env-file .env uvicorn src.api.main:app --port 8008` & `cd web && npm run dev`)
 - Test: `uv run pytest -q && make e2e`
 - Lint/typecheck: `make check` (`uv run ruff check src tests datagen scripts api && uv run pyright && cd web && npx tsc -b --noEmit && npx oxlint src e2e && npx vite build`)
 - Migrate: `supabase migration new <name>` and apply via Supabase CLI / migration files in `supabase/migrations/`

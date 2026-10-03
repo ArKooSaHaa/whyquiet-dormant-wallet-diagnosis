@@ -3,7 +3,7 @@ PY := uv run python
 .PHONY: dev check gen-types e2e demo deploy verify-deploy
 
 dev:
-	uv run uvicorn src.api.main:app --port 8000 &
+	uv run $(if $(wildcard .env),--env-file .env) uvicorn src.api.main:app --port 8008 &
 	cd web && npm run dev
 
 gen-types:
