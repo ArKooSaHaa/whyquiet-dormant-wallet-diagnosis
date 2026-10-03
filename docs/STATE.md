@@ -47,6 +47,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Model (Hrittika Task 2): `src/model/features.py` (20 shape features) and `src/model/train.py` (LightGBM + calibrated refusal, tau/delta tuned on an A-train validation slice), D27/D28. H4 gate passed on a first check: B macro-F1 about 0.86 on attributed wallets vs rule baseline 0.08; refusal about 9% on A-test and 22% on B. Official numbers come from Task 3.
 - Evaluation (Hrittika Task 3): `uv run python scripts/evaluate.py --seed 42` (D29). Seed 42: B macro-F1 0.864 (attributed), A-test 0.962, gap 0.098, refusal 9.3% A-test / 21.7% B, ECE on B 0.100, shuffled-label control 0.162, best single feature `cashin_ratio_last4` 0.373, rule baseline 0.082. Fairness on B: macro-F1 0.84-0.89 and refusal 18-24% across worker types and pay cycles.
 - Seed export (Hrittika Task 4): `uv run python scripts/export_seed.py --seed 42` writes `web/public/seed.json` (400 B wallets, 100 refused, 0.9 MB; D30). UI now runs on real data. Money with the ASSUMED constants in `src/rules/money.py`: model net value is below the rule at 1% and 4% recovery and above it at 8% (৳34,947 vs ৳20,100).
+- Seed check (Hrittika Task 5, D33): seeds 1, 2, 3 give B macro-F1 mean 0.868, range 0.847-0.886; refusal 8.3-13.3% A-test vs 18.2-27.7% B (B above A on every seed); shuffled control 0.196-0.233; best single feature 0.363-0.382 (`ticket_ratio` on all three). Seed 42 re-run matches `seed.json` exactly, so no re-export.
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
@@ -55,7 +56,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
 2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Task 5 hardening (seeds 1, 2, 3; mean ± range of B macro-F1), then Task 6 results block for Arko.
+3. **Hrittika**: Tasks 5 and 6 done; results block written, to be sent to Arko for the README "Results" section.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)
