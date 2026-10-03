@@ -22,6 +22,11 @@ def main() -> int:
     if r.status_code != 200:
         failures.append("/api/openapi.json")
 
+    r = httpx.get(f"{base}/api/batches", timeout=30)
+    print(f"GET /api/batches -> {r.status_code} {r.text[:120]}")
+    if r.status_code != 200:  # 503 = Supabase env missing, 500 = migration not applied
+        failures.append("/api/batches (write path)")
+
     r = httpx.get(base, timeout=30)
     print(f"GET / -> {r.status_code}")
     if r.status_code != 200 or "WhyQuiet" not in r.text:

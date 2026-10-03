@@ -1,108 +1,225 @@
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
+from postgrest.exceptions import APIError
+from supabase_auth.errors import AuthApiError
 
+from src.api.auth import supabase_client
 from src.api.main import app
+from src.rules.remedies import REMEDIES
+
+BATCH_ID = "11111111-1111-1111-1111-111111111111"
+ANALYST = SimpleNamespace(id="aaaa", app_metadata={"role": "analyst"})
+APPROVER = SimpleNamespace(id="bbbb", app_metadata={"role": "approver"})
+NOROLE = SimpleNamespace(id="cccc", app_metadata={})
+TOKENS = {"t-analyst": ANALYST, "t-approver": APPROVER, "t-norole": NOROLE}
+
+
+def row(**over):
+    base = {
+        "id": BATCH_ID, "cause": "job_exit", "remedy_code": "job_exit_payroll_reengage",
+        "unit_cost_paisa": 1500, "wallet_count": 2, "status": "proposed", "proposed_by": "aaaa",
+        "decided_by": None, "decided_at": None, "decision_note": None,
+        "created_at": "2026-10-03T15:00:00+00:00",
+    }
+    return {**base, **over}
+
+
+class Query:
+    def __init__(self, data):
+        self.data = data
+
+    def __getattr__(self, _name):  # select / eq / order -> chainable
+        return lambda *a, **k: self
+
+    def execute(self):
+        return self
+
+
+class FakeSupabase:
+    def __init__(self, rpc_result=None, rpc_error=None, tables=None):
+        self.rpc_result, self.rpc_error, self.tables = rpc_result, rpc_error, tables or {}
+        self.rpc_calls: list[tuple[str, dict]] = []
+        self.auth = SimpleNamespace(get_user=self._get_user, sign_in_with_password=self._sign_in)
+
+    def _get_user(self, jwt):
+        if jwt not in TOKENS:
+            raise AuthApiError("invalid JWT", 401, None)
+        return SimpleNamespace(user=TOKENS[jwt])
+
+    def _sign_in(self, creds):
+        if creds["password"] != "right":
+            raise AuthApiError("Invalid login credentials", 400, None)
+        return SimpleNamespace(session=SimpleNamespace(access_token="jwt-123"), user=APPROVER)
+
+    def rpc(self, fn, params):
+        self.rpc_calls.append((fn, params))
+        if self.rpc_error:
+            raise self.rpc_error
+        return Query(self.rpc_result)
+
+    def table(self, name):
+        return Query(self.tables.get(name, []))
+
+
+@pytest.fixture
+def fake():
+    sb = FakeSupabase()
+    app.dependency_overrides[supabase_client] = lambda: sb
+    yield sb
+    app.dependency_overrides.clear()
+
 
 client = TestClient(app)
 
 
-def test_auth_login_stub():
-    r = client.post("/api/auth/login", json={"email": "analyst@whyquiet.demo", "password": "secretpassword"})
+def auth(token):
+    return {"Authorization": f"Bearer {token}"}
+
+
+def db_error(code):
+    return APIError({"code": code, "message": "db says no"})
+
+
+# ── offline ──────────────────────────────────────────────────────────────────
+def test_503_when_supabase_env_missing(monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    r = client.get("/api/batches")
+    assert r.status_code == 503
+    assert r.json() == {"detail": "Write path offline"}
+
+
+# ── login ────────────────────────────────────────────────────────────────────
+def test_login_ok(fake):
+    r = client.post("/api/auth/login", json={"email": "approver@whyquiet.demo", "password": "right"})
     assert r.status_code == 200
-    body = r.json()
-    assert "access_token" in body
-    assert "user_id" in body
-    assert body["role"] in ("analyst", "approver")
+    assert r.json() == {"access_token": "jwt-123", "user_id": "bbbb", "role": "approver"}
 
 
-def test_auth_login_validation_error():
-    r = client.post("/api/auth/login", json={"email": "not-an-email"})
-    # Missing password
-    assert r.status_code == 422
+def test_login_bad_credentials(fake):
+    r = client.post("/api/auth/login", json={"email": "x@y.z", "password": "wrong"})
+    assert r.status_code == 401
 
 
-def test_get_batches_stub():
+def test_login_422(fake):
+    assert client.post("/api/auth/login", json={"email": "x@y.z"}).status_code == 422
+
+
+# ── list ─────────────────────────────────────────────────────────────────────
+def test_list_batches_public(fake):
+    fake.tables["batch_summaries"] = [row()]
     r = client.get("/api/batches")
     assert r.status_code == 200
-    body = r.json()
-    assert isinstance(body, list)
-    if len(body) > 0:
-        batch = body[0]
-        assert "id" in batch
-        assert "cause" in batch
-        assert "remedy_code" in batch
-        assert "unit_cost_bdt" in batch
-        assert "wallet_count" in batch
-        assert "status" in batch
-        assert "proposed_by" in batch
-        assert "created_at" in batch
+    assert r.json()[0]["unit_cost_bdt"] == 15.0
 
 
-def test_create_batch_stub():
-    payload = {
-        "cause": "job_exit",
-        "wallet_ids": ["W-ABC123", "W-XYZ789"],
-    }
-    r = client.post("/api/batches", json=payload)
+# ── propose ──────────────────────────────────────────────────────────────────
+PROPOSE = {"cause": "fee_shock", "wallet_ids": ["W-ABC123", "W-XYZ789"]}
+
+
+def test_propose_requires_token(fake):
+    assert client.post("/api/batches", json=PROPOSE).status_code == 401
+    assert client.post("/api/batches", json=PROPOSE, headers=auth("bogus")).status_code == 401
+
+
+def test_propose_requires_analyst(fake):
+    assert client.post("/api/batches", json=PROPOSE, headers=auth("t-approver")).status_code == 403
+    assert client.post("/api/batches", json=PROPOSE, headers=auth("t-norole")).status_code == 403
+    assert fake.rpc_calls == []
+
+
+def test_propose_ok_uses_rules_not_client(fake):
+    fake.rpc_result = row(cause="fee_shock", remedy_code="fee_shock_waiver", unit_cost_paisa=2500)
+    r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
     assert r.status_code == 200
-    body = r.json()
-    assert body["cause"] == "job_exit"
-    assert body["wallet_count"] == 2
-    assert body["status"] == "proposed"
+    assert r.json()["status"] == "proposed"
+    fn, params = fake.rpc_calls[0]
+    assert fn == "propose_batch"
+    assert params["p_actor"] == "aaaa"
+    assert params["p_remedy_code"] == REMEDIES["fee_shock"]["remedy_code"]
+    assert params["p_unit_cost_paisa"] == round(REMEDIES["fee_shock"]["unit_cost_bdt"] * 100)
+
+
+def test_propose_409_wallet_in_open_batch(fake):
+    fake.rpc_error = db_error("23505")
+    r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
+    assert r.status_code == 409
 
 
 @pytest.mark.parametrize(
-    "bad_payload",
+    "bad",
     [
         {"cause": "invalid_cause", "wallet_ids": ["W-ABC123"]},
         {"cause": "job_exit", "wallet_ids": []},
-        {"cause": "job_exit", "wallet_ids": ["invalid_wallet_id"]},
+        {"cause": "job_exit", "wallet_ids": ["w-abc123"]},
+        {"cause": "job_exit", "wallet_ids": ["W-ABC123"] * 1001},
     ],
 )
-def test_create_batch_validation_error(bad_payload):
-    r = client.post("/api/batches", json=bad_payload)
+def test_propose_422(fake, bad):
+    assert client.post("/api/batches", json=bad, headers=auth("t-analyst")).status_code == 422
+
+
+# ── approve / reject ─────────────────────────────────────────────────────────
+@pytest.mark.parametrize("action,status", [("approve", "approved"), ("reject", "rejected")])
+def test_decide_ok(fake, action, status):
+    fake.rpc_result = row(status=status, decided_by="bbbb", decided_at="2026-10-03T16:00:00+00:00",
+                          decision_note="looks right")
+    r = client.post(f"/api/batches/{BATCH_ID}/{action}", json={"note": "looks right"}, headers=auth("t-approver"))
+    assert r.status_code == 200
+    assert r.json()["status"] == status
+    assert fake.rpc_calls[0] == (
+        "decide_batch", {"p_actor": "bbbb", "p_batch_id": BATCH_ID, "p_status": status, "p_note": "looks right"}
+    )
+
+
+def test_decide_requires_approver(fake):
+    r = client.post(f"/api/batches/{BATCH_ID}/approve", json={"note": "x"}, headers=auth("t-analyst"))
+    assert r.status_code == 403
+    assert fake.rpc_calls == []
+
+
+@pytest.mark.parametrize("code,status", [("42501", 403), ("P0002", 404), ("55000", 409)])
+def test_decide_db_errors(fake, code, status):
+    fake.rpc_error = db_error(code)
+    r = client.post(f"/api/batches/{BATCH_ID}/approve", json={"note": "x"}, headers=auth("t-approver"))
+    assert r.status_code == status
+
+
+def test_self_approval_message(fake):
+    fake.rpc_error = db_error("42501")
+    r = client.post(f"/api/batches/{BATCH_ID}/reject", json={"note": "x"}, headers=auth("t-approver"))
+    assert r.json()["detail"] == "You cannot decide a batch you proposed"
+
+
+@pytest.mark.parametrize("body", [{"note": ""}, {"note": "a" * 501}, {}])
+def test_decide_422(fake, body):
+    r = client.post(f"/api/batches/{BATCH_ID}/approve", json=body, headers=auth("t-approver"))
     assert r.status_code == 422
 
 
-def test_approve_batch_stub():
-    r = client.post("/api/batches/batch-123/approve", json={"note": "Approved for campaign test"})
+def test_decide_401(fake):
+    assert client.post(f"/api/batches/{BATCH_ID}/approve", json={"note": "x"}).status_code == 401
+
+
+# ── export ───────────────────────────────────────────────────────────────────
+def test_export_ok(fake):
+    fake.tables["batch_summaries"] = [row(status="approved", decided_by="bbbb",
+                                          decided_at="2026-10-03T16:00:00+00:00", decision_note="ok")]
+    fake.tables["batch_wallets"] = [{"wallet_id": "W-ABC123"}, {"wallet_id": "W-XYZ789"}]
+    r = client.get(f"/api/batches/{BATCH_ID}/export")
     assert r.status_code == 200
     body = r.json()
-    assert body["status"] == "approved"
-    assert body["decision_note"] == "Approved for campaign test"
-    assert body["decided_by"] is not None
+    assert body["wallet_ids"] == ["W-ABC123", "W-XYZ789"]
+    assert body["cost_bdt"] == 30.0
+    assert body["approved_by"] == "bbbb"
 
 
-def test_approve_batch_validation_error():
-    # empty note or note exceeding 500 chars
-    r = client.post("/api/batches/batch-123/approve", json={"note": ""})
-    assert r.status_code == 422
-
-    r_long = client.post("/api/batches/batch-123/approve", json={"note": "a" * 501})
-    assert r_long.status_code == 422
+def test_export_404(fake):
+    assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 404
 
 
-def test_reject_batch_stub():
-    r = client.post("/api/batches/batch-123/reject", json={"note": "Rejected due to budget limits"})
-    assert r.status_code == 200
-    body = r.json()
-    assert body["status"] == "rejected"
-    assert body["decision_note"] == "Rejected due to budget limits"
-
-
-def test_reject_batch_validation_error():
-    r = client.post("/api/batches/batch-123/reject", json={"note": ""})
-    assert r.status_code == 422
-
-
-def test_export_batch_stub():
-    r = client.get("/api/batches/batch-123/export")
-    assert r.status_code == 200
-    body = r.json()
-    assert "batch_id" in body
-    assert "cause" in body
-    assert "remedy_code" in body
-    assert "wallet_ids" in body
-    assert "cost_bdt" in body
-    assert "approved_by" in body
-    assert "approved_at" in body
+def test_export_409_not_approved(fake):
+    fake.tables["batch_summaries"] = [row()]
+    assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 409
