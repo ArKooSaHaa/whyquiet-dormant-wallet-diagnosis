@@ -134,4 +134,12 @@ test.describe("Batches & Governance Page", () => {
     await signIn(page, "analyst", "demo-pass", mine.proposed_by);
     await expect(page.getByTestId(`self-approval-notice-${mine.id}`)).toBeVisible();
   });
+
+  test("persona buttons fill the email and the public demo password", async ({ page }) => {
+    await page.goto("/#/batches");
+    await page.getByTestId("open-login-btn").click();
+    await page.getByTestId("login-role-approver").click();
+    await expect(page.getByTestId("login-email")).toHaveValue("approver@whyquiet.demo");
+    await expect(page.getByTestId("login-password")).not.toHaveValue("");
+  });
 });

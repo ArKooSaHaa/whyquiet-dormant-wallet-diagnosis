@@ -11,6 +11,13 @@ import { login, getStoredUser, clearStoredUser, type UserSession } from "./api";
 
 type Health = components["schemas"]["HealthResponse"];
 
+// Demo passwords are public on purpose so judges sign in with one click (D42).
+// Anything proposed or approved with them is written to production and cannot be deleted.
+const DEMO_PASSWORDS: Record<string, string> = {
+  "analyst@whyquiet.demo": "i0iwIWPTWErz7vZU",
+  "approver@whyquiet.demo": "9ZgWNABJwHCoI01h",
+};
+
 function useHash() {
   const [hash, setHash] = useState(() => window.location.hash || "#/");
   useEffect(() => {
@@ -42,7 +49,7 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(getStoredUser);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("analyst@whyquiet.demo");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginPassword, setLoginPassword] = useState(DEMO_PASSWORDS["analyst@whyquiet.demo"]);
   const [loginError, setLoginError] = useState("");
   const [loginPending, setLoginPending] = useState(false);
 
@@ -90,7 +97,6 @@ export default function App() {
     setLoginPending(true);
     try {
       setUser(await login(loginEmail.trim(), loginPassword));
-      setLoginPassword("");
       setLoginOpen(false);
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Sign-in failed.");
@@ -415,7 +421,7 @@ export default function App() {
           </Field>
 
           <div className="space-y-1.5">
-            <div className="text-xs font-semibold text-[var(--text-muted)]">Demo Persona Quick Select</div>
+            <div className="text-xs font-semibold text-[var(--text-muted)]">Demo Persona Quick Select (fills email and public demo password)</div>
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -424,6 +430,7 @@ export default function App() {
                 data-testid="login-role-analyst"
                 onClick={() => {
                   setLoginEmail("analyst@whyquiet.demo");
+                  setLoginPassword(DEMO_PASSWORDS["analyst@whyquiet.demo"]);
                 }}
               >
                 Analyst
@@ -435,6 +442,7 @@ export default function App() {
                 data-testid="login-role-approver"
                 onClick={() => {
                   setLoginEmail("approver@whyquiet.demo");
+                  setLoginPassword(DEMO_PASSWORDS["approver@whyquiet.demo"]);
                 }}
               >
                 Approver
