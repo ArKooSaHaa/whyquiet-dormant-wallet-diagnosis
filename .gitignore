@@ -23,6 +23,10 @@ test-results
 .local
 data/train/*
 !data/train/.gitkeep
+data/a_test/
+data/b/
+truth/*
+!truth/.gitkeep
 
 # PRIVATE RESEARCH — never publish
 docs/v2/
