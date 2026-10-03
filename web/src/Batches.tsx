@@ -162,25 +162,22 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
     const walletIds = matchingWallets.map((w) => w.wallet_id);
 
     try {
-      let created: Batch;
-      try {
-        created = await proposeBatch(selectedCause, walletIds);
-      } catch {
-        // Fallback local batch creation when offline
-        created = {
-          id: `BATCH-${Math.floor(1000 + Math.random() * 9000)}`,
-          cause: selectedCause,
-          remedy_code: selectedRemedy?.remedy_code ?? "REM-01",
-          unit_cost_bdt: unitCost,
-          wallet_count: walletIds.length,
-          status: "proposed",
-          proposed_by: user.user_id,
-          decided_by: null,
-          decided_at: null,
-          decision_note: null,
-          created_at: new Date().toISOString(),
-        };
-      }
+      // Simulated locally only when the write path is offline (503); real API errors are shown.
+      const created: Batch = offline
+        ? {
+            id: `BATCH-${Math.floor(1000 + Math.random() * 9000)}`,
+            cause: selectedCause,
+            remedy_code: selectedRemedy?.remedy_code ?? "REM-01",
+            unit_cost_bdt: unitCost,
+            wallet_count: walletIds.length,
+            status: "proposed",
+            proposed_by: user.user_id,
+            decided_by: null,
+            decided_at: null,
+            decision_note: null,
+            created_at: new Date().toISOString(),
+          }
+        : await proposeBatch(selectedCause, walletIds);
       setBatches((prev) => [created, ...prev]);
       setProposeSuccess(`Batch ${created.id} successfully proposed with ${walletIds.length} wallets!`);
     } catch (err) {
@@ -204,19 +201,15 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
     const { batch, action } = decideModal;
 
     try {
-      let updated: Batch;
-      try {
-        updated = await decideBatch(batch.id, action, decisionNote);
-      } catch {
-        // Fallback local update
-        updated = {
-          ...batch,
-          status: action === "approve" ? "approved" : "rejected",
-          decided_by: user.user_id,
-          decided_at: new Date().toISOString(),
-          decision_note: decisionNote,
-        };
-      }
+      const updated: Batch = offline
+        ? {
+            ...batch,
+            status: action === "approve" ? "approved" : "rejected",
+            decided_by: user.user_id,
+            decided_at: new Date().toISOString(),
+            decision_note: decisionNote,
+          }
+        : await decideBatch(batch.id, action, decisionNote);
       setBatches((prev) => prev.map((b) => (b.id === batch.id ? updated : b)));
       setDecideModal(null);
       setDecisionNote("");
