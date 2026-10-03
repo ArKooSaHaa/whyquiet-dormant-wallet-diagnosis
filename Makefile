@@ -1,6 +1,6 @@
 PY := uv run python
 
-.PHONY: dev check gen-types e2e demo verify-deploy
+.PHONY: dev check gen-types e2e demo deploy verify-deploy
 
 dev:
 	uv run uvicorn src.api.main:app --port 8000 &
@@ -26,5 +26,8 @@ e2e:
 demo:
 	@echo demo not built yet
 
+deploy:
+	npx -y vercel --prod
+
 verify-deploy:
-	uv run python scripts/verify_deploy.py $(URL)
+	uv run python scripts/verify_deploy.py $(URL) $(FLAGS)

@@ -162,6 +162,16 @@ make check
 make e2e
 ```
 
+### Deployment & CI/CD
+```bash
+# Deploy to Vercel via CLI:
+make deploy
+
+# Verify live deployment:
+make verify-deploy URL=https://whyquiet-dormant-wallet-diagnosis.vercel.app
+```
+See [`docs/DEPLOYMENT.md`](file:///media/arkosaha/Volume13/whyquiet-dormant-wallet-diagnosis/docs/DEPLOYMENT.md) for the complete guide on GitHub Actions CI/CD workflows, GitHub Secrets, and Supabase environment variables.
+
 ---
 
 ## 📁 Repository Structure

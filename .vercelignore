@@ -1,0 +1,14 @@
+.git
+.github
+.venv
+.pytest_cache
+.ruff_cache
+tests
+data
+truth
+spikes
+datagen
+docs
+.agents
+node_modules
+web/node_modules

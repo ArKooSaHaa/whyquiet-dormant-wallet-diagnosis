@@ -1,0 +1,136 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (production or preview)"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - preview
+      allow_offline:
+        description: "Allow write path (Supabase) to be offline during health check"
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  verify:
+    name: Verify (Check & E2E)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: cd web && npm ci
+
+      - name: Run lint, types, tests, and build
+        run: make check
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+        working-directory: web
+
+      - name: Run E2E tests
+        run: make e2e
+
+  deploy:
+    name: Deploy to Vercel
+    needs: [verify]
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel Environment Information
+        if: env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "preview" ]; then
+            vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: Build Project Artifacts
+        if: env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != ''
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "preview" ]; then
+            vercel build --token=${{ secrets.VERCEL_TOKEN }}
+          else
+            vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          fi
+
+      - name: Deploy Project Artifacts to Vercel
+        id: deploy
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "::error::VERCEL_TOKEN secret is not configured. Please add VERCEL_TOKEN to repository secrets."
+            exit 1
+          fi
+
+          if [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            if [ "${{ github.event.inputs.environment }}" = "preview" ]; then
+              DEPLOY_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }})
+            else
+              DEPLOY_URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }})
+            fi
+          else
+            echo "VERCEL_ORG_ID or VERCEL_PROJECT_ID not set; deploying with direct project configuration..."
+            if [ "${{ github.event.inputs.environment }}" = "preview" ]; then
+              DEPLOY_URL=$(vercel deploy --yes --token=${{ secrets.VERCEL_TOKEN }})
+            else
+              DEPLOY_URL=$(vercel deploy --yes --prod --token=${{ secrets.VERCEL_TOKEN }})
+            fi
+          fi
+
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Deployment URL: $DEPLOY_URL"
+
+      - name: Verify Deployed URL Health
+        run: |
+          FLAGS="--allow-offline"
+          if [ "${{ github.event.inputs.allow_offline }}" = "false" ]; then
+            FLAGS=""
+          fi
+          uv run python scripts/verify_deploy.py ${{ steps.deploy.outputs.url }} $FLAGS
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Vercel Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.deploy.outputs.url }}" ]; then
+            echo "- **URL:** [${{ steps.deploy.outputs.url }}](${{ steps.deploy.outputs.url }})" >> $GITHUB_STEP_SUMMARY
+          fi
