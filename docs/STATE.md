@@ -23,16 +23,16 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 
 ## Tier 0 checklist (done by hour 24 — AMENDMENTS A7)
 - [x] Generator with populations A and B
-- [ ] Rule baseline
+- [x] Rule baseline (`src/rules/baseline.py`; per wallet and as F1 in `seed.json`)
 - [x] Trained model with SHAP-style reasons (LightGBM `pred_contrib`, D27)
-- [ ] Refusal path
-- [ ] Money report with the 1% / 4% / 8% recovery sweep
+- [x] Refusal path (model `decide` with reasons; refusal screen renders real refusals from `seed.json`)
+- [x] Money report with the 1% / 4% / 8% recovery sweep (`seed.json` report.money, Evidence page)
 - [x] Console UI (Scaffolded with Cause Desk placeholder)
 - [x] Deployed demo URL that works offline from seeded data (Vercel production active)
 - [ ] README with every section required by CONTEXT_v3 section 9
 - [ ] Report draft
 - [ ] Consent/compliance block
-- [ ] Minimal fairness check (macro-F1 and refusal rate per worker type and per pay cycle)
+- [x] Minimal fairness check (macro-F1 and refusal rate per worker type and per pay cycle; `seed.json` report.fairness)
 - [x] Other mandatory deliverables named in CONTEXT_v3 section 9 (public GitHub repo with continuous commit history; live deployment reachable by judges)
 
 ## Done
@@ -45,6 +45,8 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Detailed 8h parallel team execution plans & contracts created in `docs/plans/` (shads.md, hrittika.md, arko.md) and `docs/contracts/` (seed-bundle.md, api.md).
 - Datagen: populations A (4800 train / 1200 test) and B (3000) via `uv run python -m datagen.generate --seed 42` (design: D21).
 - Model (Hrittika Task 2): `src/model/features.py` (20 shape features) and `src/model/train.py` (LightGBM + calibrated refusal, tau/delta tuned on an A-train validation slice), D27/D28. H4 gate passed on a first check: B macro-F1 about 0.86 on attributed wallets vs rule baseline 0.08; refusal about 9% on A-test and 22% on B. Official numbers come from Task 3.
+- Evaluation (Hrittika Task 3): `uv run python scripts/evaluate.py --seed 42` (D29). Seed 42: B macro-F1 0.864 (attributed), A-test 0.962, gap 0.098, refusal 9.3% A-test / 21.7% B, ECE on B 0.100, shuffled-label control 0.162, best single feature `cashin_ratio_last4` 0.373, rule baseline 0.082. Fairness on B: macro-F1 0.84-0.89 and refusal 18-24% across worker types and pay cycles.
+- Seed export (Hrittika Task 4): `uv run python scripts/export_seed.py --seed 42` writes `web/public/seed.json` (400 B wallets, 100 refused, 0.9 MB; D30). UI now runs on real data. Money with the ASSUMED constants in `src/rules/money.py`: model net value is below the rule at 1% and 4% recovery and above it at 8% (৳34,947 vs ৳20,100).
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
@@ -53,7 +55,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
 2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Task 3 `scripts/evaluate.py` (report.ml, confusion, fairness), then Task 4 export `web/public/seed.json`.
+3. **Hrittika**: Task 5 hardening (seeds 1, 2, 3; mean ± range of B macro-F1), then Task 6 results block for Arko.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)
@@ -62,6 +64,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 
 ## Blockers
 - None (all contracts frozen; everyone unblocked on sample/stub data).
+- For Shads: wallet chart "Inactive Window" shading uses list positions, not week numbers (`web/src/Wallet.tsx:189`), so with real data it covers the active weeks; money chart axis divides by 1M and shows ৳0.0M for values in the thousands.
 
 ## Last tool used
 write_to_file / replace_file_content (context files standardization)

@@ -139,8 +139,8 @@ feature, refusal A/B, ECE, fairness table, plus the A1/A3 honesty sentences verb
 `seed.json`, no rounding games.
 
 ## Done checklist
-- [ ] `web/public/seed.json` on main, matches the contract
-- [ ] `uv run pytest -q` green incl. no-truth-import test
-- [ ] Refusal rate > 0 on A and B; B ≥ A
-- [ ] Shuffled control ≈ chance; best single feature ≪ full model
+- [x] `web/public/seed.json` matches the contract (`scripts/export_seed.py --seed 42`, 400 wallets, 100 refused); on main once the feat/eval PR merges
+- [x] `uv run pytest -q` green incl. no-truth-import test (88 passed)
+- [x] Refusal rate > 0 on A and B; B ≥ A (9.3% A-test, 21.7% B)
+- [x] Shuffled control ≈ chance; best single feature ≪ full model (0.162 and 0.373 vs 0.864)
 - [ ] Results block sent to Arko

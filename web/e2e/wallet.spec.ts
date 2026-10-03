@@ -1,6 +1,11 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Wallet Detail & Refusal Page", () => {
+  test.beforeEach(async ({ page }) => {
+    // Pin to seed.sample.json: these tests use known sample wallets; real-data.spec.ts covers seed.json.
+    await page.route("**/seed.json", (route) => route.fulfill({ status: 404 }));
+  });
+
   test("attributed wallet: displays remedy, bilingual copy, decline shape, and posterior charts", async ({ page }) => {
     // Navigate to known attributed wallet from sample seed
     await page.goto("/#/w/W-7K9A1B");
