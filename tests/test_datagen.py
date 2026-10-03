@@ -1,4 +1,4 @@
-"""Generator checks (spec: docs/superpowers/specs/2026-10-03-datagen-design.md, section "Checks")."""
+"""Generator checks: shapes, cause fingerprints, A vs B shift, determinism (design: D21 in docs/DECISIONS.md)."""
 
 import re
 

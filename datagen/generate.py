@@ -1,6 +1,6 @@
 """Synthetic dormant-wallet generator: population A (train/test) and shifted population B (eval only).
 
-Spec: docs/superpowers/specs/2026-10-03-datagen-design.md. Every number in this file is ASSUMED unless noted.
+Design: decision D21 in docs/DECISIONS.md. Every number in this file is ASSUMED unless noted.
 Run: uv run python -m datagen.generate --seed 42
 """
 
