@@ -22,7 +22,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 8 hours (D18 locked: full project build across Shads, Hrittika, Arko)
 
 ## Tier 0 checklist (done by hour 24 — AMENDMENTS A7)
-- [ ] Generator with populations A and B
+- [x] Generator with populations A and B
 - [ ] Rule baseline
 - [ ] Trained model with SHAP-style reasons
 - [ ] Refusal path
@@ -43,6 +43,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Context files standardized to uniform format: AGENTS.md, CLAUDE.md, GEMINI.md, OPENCODE.md, opencode.json, .agents/rules/00-project.md
 - System design finalized & approved in `docs/system-design.md` with radical ponytail simplification (Tier 0 vs Tier 1, public offline read screens, 2-person batch approval, campaign download, zero PII, D11–D14).
 - Detailed 8h parallel team execution plans & contracts created in `docs/plans/` (shads.md, hrittika.md, arko.md) and `docs/contracts/` (seed-bundle.md, api.md).
+- Datagen: populations A (4800 train / 1200 test) and B (3000) via `uv run python -m datagen.generate --seed 42` (spec docs/superpowers/specs/2026-10-03-datagen-design.md).
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
