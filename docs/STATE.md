@@ -64,7 +64,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 
 ## Blockers
 - None (all contracts frozen; everyone unblocked on sample/stub data).
-- For Shads: wallet chart "Inactive Window" shading uses list positions, not week numbers (`web/src/Wallet.tsx:189`), so with real data it covers the active weeks; money chart axis divides by 1M and shows ৳0.0M for values in the thousands.
+- For Shads: money chart axis divides by 1M and shows ৳0.0M for values in the thousands. (Wallet chart "Inactive Window" shading fixed in `web/src/Wallet.tsx` with an e2e check, D32.)
 
 ## Last tool used
 write_to_file / replace_file_content (context files standardization)

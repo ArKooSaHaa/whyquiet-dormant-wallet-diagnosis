@@ -186,7 +186,9 @@ export default function Wallet({
   const tau = bundle.meta.tau;
   const tauPct = tau * 100;
   const seriesLen = wallet.series.length;
-  const silenceStartWeek = Math.max(1, seriesLen - wallet.weeks_silent + 1);
+  // The x-axis uses real week numbers, so take them from the series, not list positions.
+  const silenceStartWeek = wallet.series[Math.max(0, seriesLen - wallet.weeks_silent)].week;
+  const lastWeek = wallet.series[seriesLen - 1].week;
 
   return (
     <div className="space-y-6" data-testid="wallet-view">
@@ -364,7 +366,7 @@ export default function Wallet({
                 {/* Silence Window Shading */}
                 <ReferenceArea
                   x1={silenceStartWeek}
-                  x2={seriesLen}
+                  x2={lastWeek}
                   strokeOpacity={0.3}
                   fill="var(--danger-soft)"
                   fillOpacity={0.25}
