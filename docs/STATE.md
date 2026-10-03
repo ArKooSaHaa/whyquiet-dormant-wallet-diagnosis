@@ -7,15 +7,15 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 
 ## Deployment & Resources
 - **GitHub Repo (Public)**: https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis
-- **Production URL**: https://whyquiet-dormant-wallet-diagnosis.vercel.app
-- **Supabase Project Ref**: `tbvbvvyykozmpbcyrbqw` (region: ap-southeast-1 Singapore)
+- **Production URL**: https://whyquiet.vercel.app
+- **Supabase Project Ref**: `grflsfhkcatoxpjeszxh` (region: ap-southeast-1 Singapore, org "hrittikaaa's Org"; fresh deploy D37, replaces `tbvbvvyykozmpbcyrbqw`)
 
 ## Tooling
 | Service | Available Via | Notes |
 | --- | --- | --- |
 | GitHub | CLI (`gh`) | Authenticated as `shads-01` |
-| Vercel | MCP (`vercel`) + CLI (`vercel`) | Linked project `whyquiet-dormant-wallet-diagnosis` |
-| Supabase | MCP (`supabase`) | Project `tbvbvvyykozmpbcyrbqw` under org `tokenShesh` |
+| Vercel | CLI (`vercel`, logged in as `hrittikaaa`) | Linked project `whyquiet` under hrittikaaa's projects (D37); deploys from the CLI, no Git integration |
+| Supabase | CLI (`npx supabase`, linked) | Project `grflsfhkcatoxpjeszxh` under Hrittika's org (D37) |
 | Context7 | MCP (`context7`) | Resolves and queries official library documentation |
 
 ## Window assumption
@@ -38,7 +38,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Done
 - Project scaffolded with official generator & locked stack: Python 3.12/uv, FastAPI + Pydantic v2, Vite + React + TS + Tailwind, types generated from OpenAPI contract
 - Public GitHub repo created: `whyquiet-dormant-wallet-diagnosis` with clean secret scan and CI (check + e2e) green
-- Supabase project `whyquiet` (`tbvbvvyykozmpbcyrbqw`) provisioned on Free tier in Singapore; migration applied with RLS-protected `triage_audit_log`
+- Fresh deploy (D37, 2026-10-04): Supabase project `whyquiet` (`grflsfhkcatoxpjeszxh`, Free, Singapore) with both migrations applied and both demo accounts; Vercel project `whyquiet` (hrittikaaa's projects) at https://whyquiet.vercel.app, `verify_deploy.py` PASS, full write-path flow checked against the new DB.
 - Vercel production deployment live with serverless Python API and Vite web app
 - Context files standardized to uniform format: AGENTS.md, CLAUDE.md, GEMINI.md, OPENCODE.md, opencode.json, .agents/rules/00-project.md
 - System design finalized & approved in `docs/system-design.md` with radical ponytail simplification (Tier 0 vs Tier 1, public offline read screens, 2-person batch approval, campaign download, zero PII, D11–D14).

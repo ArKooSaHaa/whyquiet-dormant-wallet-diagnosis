@@ -1,14 +1,13 @@
-.git
-.github
-.venv
-.pytest_cache
-.ruff_cache
-tests
-data
-truth
-spikes
-datagen
-docs
-.agents
-node_modules
+# Allowlist: upload only what the deploy needs, so `vercel deploy` from a laptop never ships
+# .env, data/, truth/ or .venv (the CLI does not read .gitignore). D35, D37.
+# requirements.txt (not pyproject.toml) gives the function only its runtime deps.
+/*
+!api
+!src
+!web
+!vercel.json
+!requirements.txt
+!.python-version
 web/node_modules
+web/dist
+web/test-results

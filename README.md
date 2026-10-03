@@ -25,7 +25,7 @@ WhyQuiet analyzes the 26-week transaction decline shape of inactive user wallets
 
 ## 🚀 Live Demo & Access
 
-- **Live Application URL**: [https://whyquiet-dormant-wallet-diagnosis.vercel.app](https://whyquiet-dormant-wallet-diagnosis.vercel.app)
+- **Live Application URL**: [https://whyquiet.vercel.app](https://whyquiet.vercel.app)
 - **Public Read Console**: The diagnostic queue, wallet details, decline shapes, posterior charts, refusal proofs, and economic simulations are completely public and offline-first from bundled seed data (zero login required).
 - **Governance & Batch Write Access**:
   - `analyst@whyquiet.demo` (Role: `analyst` — proposes cause-targeted batches)
@@ -149,8 +149,14 @@ uv sync
 # 3. Frontend dependencies
 cd web && npm install && cd ..
 
-# 4. Run local development servers (API on :8008 / :8000, Web on :5173)
+# 4. Secrets for the write path (login, batches): fill in .env, never commit it
+cp .env.example .env
+
+# 5. Run local development servers (API on :8008, Web on :5173)
 make dev
+# Without make (e.g. Windows), two terminals:
+#   uv run --env-file .env uvicorn src.api.main:app --port 8008
+#   cd web && npm run dev
 ```
 
 ### Verification & Quality Gate
@@ -164,13 +170,13 @@ make e2e
 
 ### Deployment & CI/CD
 ```bash
-# Deploy to Vercel via CLI:
+# Deploy happens automatically after CI passes on main. Manual deploy via CLI:
 make deploy
 
 # Verify live deployment:
-make verify-deploy URL=https://whyquiet-dormant-wallet-diagnosis.vercel.app
+make verify-deploy URL=https://whyquiet.vercel.app
 ```
-See [`docs/DEPLOYMENT.md`](file:///media/arkosaha/Volume13/whyquiet-dormant-wallet-diagnosis/docs/DEPLOYMENT.md) for the complete guide on GitHub Actions CI/CD workflows, GitHub Secrets, and Supabase environment variables.
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the complete guide on GitHub Actions CI/CD workflows, GitHub Secrets, and Supabase environment variables.
 
 ---
 

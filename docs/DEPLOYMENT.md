@@ -34,7 +34,7 @@ When prompted by Vercel for project configuration:
 - **Set up and deploy?** `yes`
 - **Which scope?** `<your-team-or-personal-account>`
 - **Link to existing project?** `no` (or `yes` if already created)
-- **Project name:** `whyquiet-dormant-wallet-diagnosis`
+- **Project name:** `whyquiet` (production: https://whyquiet.vercel.app)
 - **Directory located?** `./` (root)
 - **Want to modify settings?** `no` (`vercel.json` handles build & install commands automatically)
 
@@ -44,14 +44,14 @@ When prompted by Vercel for project configuration:
 
 The repository includes pre-configured GitHub Actions workflows in `.github/workflows/`:
 - **`ci.yml`**: Runs on every pull request and push. Executes `make check` (ruff, pyright, pytest, openapi typegen, tsc, oxlint, vite build) and `make e2e` (Playwright tests).
-- **`deploy.yml`**: Runs on push to `main` (and manual `workflow_dispatch`). Validates the entire test suite, deploys to Vercel, and verifies live health.
+- **`deploy.yml`**: Runs when `ci.yml` finishes **successfully on `main`** (and on manual `workflow_dispatch`). Deploys to Vercel production with `vercel deploy --prod`, then runs `scripts/verify_deploy.py` against https://whyquiet.vercel.app. A red CI run never deploys. (D38)
 
 ### Required GitHub Secrets
 To enable automated deployments from GitHub Actions, add the following secrets to your GitHub repository under **Settings > Secrets and variables > Actions**:
 
 | Secret Name | Description | Where to find |
 |-------------|-------------|---------------|
-| `VERCEL_TOKEN` | Vercel Personal Access Token | [Vercel Account Tokens](https://vercel.com/account/tokens) |
+| `VERCEL_TOKEN` | Vercel token scoped to the `whyquiet` project | `vercel tokens add "github-actions-whyquiet" --project whyquiet` |
 | `VERCEL_ORG_ID` | Vercel Organization / User ID | In `.vercel/project.json` (after `npx vercel link`) or Vercel Team Settings |
 | `VERCEL_PROJECT_ID` | Vercel Project ID | In `.vercel/project.json` (after `npx vercel link`) or Vercel Project Settings > General |
 
@@ -67,9 +67,8 @@ Under **Vercel Dashboard > Your Project > Settings > Environment Variables**, co
 |---------------|-----------|-------------|
 | `SUPABASE_URL` | Yes (for write path) | Your Supabase project URL (e.g. `https://xyz.supabase.co`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes (for write path) | Service role secret key (server-side only, bypasses RLS) |
-| `SUPABASE_ANON_KEY` | Yes (for write path) | Anon public key |
-| `DEMO_ANALYST_PASSWORD` | Optional | Demo login password for `analyst@whyquiet.demo` |
-| `DEMO_APPROVER_PASSWORD` | Optional | Demo login password for `approver@whyquiet.demo` |
+
+Only these two are read by the API. `SUPABASE_ANON_KEY` and the demo passwords are local-only (`.env`, used by `supabase/seed_demo_users.py`); do not add them to Vercel.
 
 *Note: If Supabase variables are not set, read-only screens still function 100% via seeded offline data, and write-path calls return a 503 with a graceful in-app banner.*
 
@@ -98,14 +97,14 @@ The verification script checks:
 ## Supabase Database Setup & Migrations
 
 If setting up a fresh Supabase instance for the write path:
-1. Apply the migration:
+1. Apply both migrations in `supabase/migrations/` (in order):
    ```bash
    # Using Supabase CLI:
    supabase db push
    # Or paste the SQL in Supabase SQL Editor:
-   # supabase/migrations/20261003215000_remedy_batches.sql
+   # 20261003180000_audit_log.sql, then 20261003215000_remedy_batches.sql
    ```
 2. Seed the demo users (`analyst@whyquiet.demo`, `approver@whyquiet.demo`):
    ```bash
-   uv run python supabase/seed_demo_users.py
+   uv run --env-file .env python supabase/seed_demo_users.py
    ```

@@ -3,7 +3,7 @@
 
 > **Authors & Collaborators:** WhyQuiet Core Team (Shads, Hrittika, Arko)  
 > **Repository:** [https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis](https://github.com/shads-01/whyquiet-dormant-wallet-diagnosis)  
-> **Live Deployment:** [https://whyquiet-dormant-wallet-diagnosis.vercel.app](https://whyquiet-dormant-wallet-diagnosis.vercel.app)  
+> **Live Deployment:** [https://whyquiet.vercel.app](https://whyquiet.vercel.app)  
 
 ---
 
