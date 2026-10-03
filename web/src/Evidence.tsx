@@ -401,7 +401,7 @@ export default function Evidence() {
                     stroke="var(--text-faint)"
                     fontSize={11}
                     tickLine={false}
-                    tickFormatter={(val) => `৳${(val / 1000000).toFixed(1)}M`}
+                    tickFormatter={(val) => `৳${Math.round(val / 1000)}k`}
                   />
                   <Tooltip
                     formatter={(val: any, name: any) => [formatBDT(Number(val)), name === "netValue" ? "Net Economic Value" : name]}

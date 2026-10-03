@@ -15,6 +15,7 @@ import {
 import { loadSeed, type SeedBundle, type Cause } from "./seed";
 import {
   type Batch,
+  type UserSession,
   getStoredUser,
   listBatches,
   proposeBatch,
@@ -41,12 +42,13 @@ const formatBDT = (amount: number): string => {
     .trim();
 };
 
+// Shown only when the write path is offline (503), labelled as samples in the banner.
 const SAMPLE_BATCHES: Batch[] = [
   {
     id: "BATCH-8910",
     cause: "job_exit",
-    remedy_code: "REM-JOB-01",
-    unit_cost_bdt: 12,
+    remedy_code: "job_exit_payroll_reengage",
+    unit_cost_bdt: 15,
     wallet_count: 142,
     status: "proposed",
     proposed_by: "analyst@whyquiet.demo",
@@ -58,7 +60,7 @@ const SAMPLE_BATCHES: Batch[] = [
   {
     id: "BATCH-8909",
     cause: "fee_shock",
-    remedy_code: "REM-FEE-01",
+    remedy_code: "fee_shock_waiver",
     unit_cost_bdt: 25,
     wallet_count: 84,
     status: "approved",
@@ -71,7 +73,7 @@ const SAMPLE_BATCHES: Batch[] = [
 ];
 
 export interface BatchesProps {
-  user?: { email: string; role: "analyst" | "approver" } | null;
+  user?: UserSession | null;
   onOpenLogin?: () => void;
 }
 
@@ -115,7 +117,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
           setBatches(SAMPLE_BATCHES);
         } else {
           setOffline(false);
-          setBatches(res.batches.length > 0 ? res.batches : SAMPLE_BATCHES);
+          setBatches(res.batches);
         }
         setLoading(false);
       })
@@ -172,7 +174,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
           unit_cost_bdt: unitCost,
           wallet_count: walletIds.length,
           status: "proposed",
-          proposed_by: user.email,
+          proposed_by: user.user_id,
           decided_by: null,
           decided_at: null,
           decision_note: null,
@@ -210,7 +212,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
         updated = {
           ...batch,
           status: action === "approve" ? "approved" : "rejected",
-          decided_by: user.email,
+          decided_by: user.user_id,
           decided_at: new Date().toISOString(),
           decision_note: decisionNote,
         };
@@ -301,7 +303,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
             <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" />
             <span>
-              <strong>Write path offline.</strong> Read-only screens still work; batch actions are simulated locally.
+              <strong>Write path offline.</strong> Read-only screens still work; the batches below are samples and batch actions are simulated locally.
             </span>
           </div>
           <Chip tone="warning">Offline Mode</Chip>
@@ -485,7 +487,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               </thead>
               <tbody>
                 {batches.map((b) => {
-                  const isProposer = user?.email === b.proposed_by;
+                  const isProposer = user?.user_id === b.proposed_by;
                   const isApprover = user?.role === "approver";
                   const isProposed = b.status === "proposed";
                   const isApproved = b.status === "approved";

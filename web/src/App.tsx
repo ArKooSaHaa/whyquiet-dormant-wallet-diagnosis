@@ -7,6 +7,7 @@ import Wallet from "./Wallet";
 import Batches from "./Batches";
 import Evidence from "./Evidence";
 import { Button, Modal, Field, Input, Chip } from "./design/ui";
+import { login, getStoredUser, clearStoredUser, type UserSession } from "./api";
 
 type Health = components["schemas"]["HealthResponse"];
 
@@ -37,15 +38,11 @@ export default function App() {
     localStorage.setItem("wq_mode", mode);
   }, [mode]);
 
-  // Demo Auth State (in sessionStorage)
-  const [user, setUser] = useState<{ email: string; role: "analyst" | "approver" } | null>(() => {
-    const saved = sessionStorage.getItem("wq_user");
-    return saved ? JSON.parse(saved) : null;
-  });
+  // Signed-in user from /api/auth/login (token + user_id + server role, in sessionStorage)
+  const [user, setUser] = useState<UserSession | null>(getStoredUser);
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginEmail, setLoginEmail] = useState("analyst@whyquiet.demo");
-  const [loginPassword, setLoginPassword] = useState("••••••••");
-  const [loginRole, setLoginRole] = useState<"analyst" | "approver">("analyst");
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [loginPending, setLoginPending] = useState(false);
 
@@ -77,7 +74,7 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
 
@@ -91,17 +88,19 @@ export default function App() {
     }
 
     setLoginPending(true);
-    setTimeout(() => {
-      const newUser = { email: loginEmail.trim(), role: loginRole };
-      sessionStorage.setItem("wq_user", JSON.stringify(newUser));
-      setUser(newUser);
-      setLoginPending(false);
+    try {
+      setUser(await login(loginEmail.trim(), loginPassword));
+      setLoginPassword("");
       setLoginOpen(false);
-    }, 400);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Sign-in failed.");
+    } finally {
+      setLoginPending(false);
+    }
   };
 
   const handleLogout = () => {
-    sessionStorage.removeItem("wq_user");
+    clearStoredUser();
     setUser(null);
   };
 
@@ -420,11 +419,10 @@ export default function App() {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant={loginRole === "analyst" ? "primary" : "secondary"}
+                variant={loginEmail === "analyst@whyquiet.demo" ? "primary" : "secondary"}
                 size="sm"
                 data-testid="login-role-analyst"
                 onClick={() => {
-                  setLoginRole("analyst");
                   setLoginEmail("analyst@whyquiet.demo");
                 }}
               >
@@ -432,11 +430,10 @@ export default function App() {
               </Button>
               <Button
                 type="button"
-                variant={loginRole === "approver" ? "primary" : "secondary"}
+                variant={loginEmail === "approver@whyquiet.demo" ? "primary" : "secondary"}
                 size="sm"
                 data-testid="login-role-approver"
                 onClick={() => {
-                  setLoginRole("approver");
                   setLoginEmail("approver@whyquiet.demo");
                 }}
               >
