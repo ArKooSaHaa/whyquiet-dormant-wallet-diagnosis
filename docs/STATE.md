@@ -24,7 +24,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Tier 0 checklist (done by hour 24 — AMENDMENTS A7)
 - [x] Generator with populations A and B
 - [ ] Rule baseline
-- [ ] Trained model with SHAP-style reasons
+- [x] Trained model with SHAP-style reasons (LightGBM `pred_contrib`, D22)
 - [ ] Refusal path
 - [ ] Money report with the 1% / 4% / 8% recovery sweep
 - [x] Console UI (Scaffolded with Cause Desk placeholder)
@@ -44,6 +44,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - System design finalized & approved in `docs/system-design.md` with radical ponytail simplification (Tier 0 vs Tier 1, public offline read screens, 2-person batch approval, campaign download, zero PII, D11–D14).
 - Detailed 8h parallel team execution plans & contracts created in `docs/plans/` (shads.md, hrittika.md, arko.md) and `docs/contracts/` (seed-bundle.md, api.md).
 - Datagen: populations A (4800 train / 1200 test) and B (3000) via `uv run python -m datagen.generate --seed 42` (design: D21).
+- Model (Hrittika Task 2): `src/model/features.py` (20 shape features) and `src/model/train.py` (LightGBM + calibrated refusal, tau/delta tuned on an A-train validation slice), D22/D23. H4 gate passed on a first check: B macro-F1 about 0.86 on attributed wallets vs rule baseline 0.08; refusal about 9% on A-test and 22% on B. Official numbers come from Task 3.
 
 ## In progress
 - Sprint execution: Hrittika on datagen & model, Arko on rules & write API stubs, Shads on frontend & sample seed.
@@ -51,7 +52,7 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 ## Next 3 actions (per docs/plans/README.md)
 1. **Shads**: Build `web/public/seed.sample.json` & `web/src/seed.ts` (Task 0), then build the shell & triage queue (Task 1).
 2. **Arko**: Push write-path API stubs (`/api/auth/login`, `/api/batches*`) + run `make gen-types` (Task 1), then implement deterministic rules in `src/rules/` (Task 2).
-3. **Hrittika**: Build `datagen/generate.py` with population A & B shifts and cause fingerprints (Task 1).
+3. **Hrittika**: Task 3 `scripts/evaluate.py` (report.ml, confusion, fairness), then Task 4 export `web/public/seed.json`.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)
