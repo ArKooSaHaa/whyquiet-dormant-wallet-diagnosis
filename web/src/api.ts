@@ -31,6 +31,22 @@ export interface ExportBatchResponse {
   approved_at: string;
 }
 
+export interface LockedWallet {
+  wallet_id: string;
+  reason: "open" | "cooldown";
+  until: string | null;
+}
+
+export interface AuditEntry {
+  id: string;
+  actor_id: string;
+  actor_role: "analyst" | "approver";
+  action: string;
+  target_id: string;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
 const STORAGE_KEY_TOKEN = "wq_token";
 const STORAGE_KEY_USER = "wq_user";
 
@@ -58,7 +74,7 @@ function getAuthHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function handleApiResponse<T>(res: Response): Promise<T> {
+async function handleApiResponse<T>(res: Response, isLogin = false): Promise<T> {
   if (!res.ok) {
     let detail = `Request failed with status ${res.status}`;
     try {
@@ -69,6 +85,12 @@ async function handleApiResponse<T>(res: Response): Promise<T> {
     } catch {
       if (res.status === 503) {
         detail = "Write path offline. Read-only screens still work.";
+      }
+    }
+    if (res.status === 401 && !isLogin) {
+      clearStoredUser();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("wq:session-expired"));
       }
     }
     throw new Error(detail);
@@ -87,7 +109,7 @@ export async function login(email: string, password: string): Promise<UserSessio
     access_token: string;
     user_id: string;
     role: "analyst" | "approver";
-  }>(res);
+  }>(res, true);
 
   const session: UserSession = {
     email,
@@ -99,9 +121,18 @@ export async function login(email: string, password: string): Promise<UserSessio
   return session;
 }
 
-export async function listBatches(): Promise<{ batches: Batch[]; offline: boolean }> {
+export async function listBatches(
+  status?: string,
+  limit = 20,
+  offset = 0
+): Promise<{ batches: Batch[]; offline: boolean }> {
   try {
-    const res = await fetch("/api/batches", {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+
+    const res = await fetch(`/api/batches?${params.toString()}`, {
       headers: { ...getAuthHeader() },
     });
     if (res.status === 503) {
@@ -112,6 +143,25 @@ export async function listBatches(): Promise<{ batches: Batch[]; offline: boolea
   } catch {
     return { batches: [], offline: true };
   }
+}
+
+export async function listLockedWallets(): Promise<LockedWallet[]> {
+  try {
+    const res = await fetch("/api/wallets/locked", {
+      headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) return [];
+    return await handleApiResponse<LockedWallet[]>(res);
+  } catch {
+    return [];
+  }
+}
+
+export async function getBatchAudit(id: string): Promise<AuditEntry[]> {
+  const res = await fetch(`/api/batches/${id}/audit`, {
+    headers: { ...getAuthHeader() },
+  });
+  return handleApiResponse<AuditEntry[]>(res);
 }
 
 export async function proposeBatch(cause: Cause, walletIds: string[]): Promise<Batch> {

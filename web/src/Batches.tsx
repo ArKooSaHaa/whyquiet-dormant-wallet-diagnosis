@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Card,
   Chip,
@@ -16,8 +16,12 @@ import { loadSeed, type SeedBundle, type Cause } from "./seed";
 import {
   type Batch,
   type UserSession,
+  type LockedWallet,
+  type AuditEntry,
   getStoredUser,
   listBatches,
+  listLockedWallets,
+  getBatchAudit,
   proposeBatch,
   decideBatch,
   exportBatch,
@@ -80,6 +84,8 @@ export interface BatchesProps {
 export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
   const [bundle, setBundle] = useState<SeedBundle | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [lockedWallets, setLockedWallets] = useState<LockedWallet[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,23 +108,39 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
   const [deciding, setDeciding] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
+  // Audit timeline state
+  const [expandedAuditIds, setExpandedAuditIds] = useState<Record<string, boolean>>({});
+  const [auditTrails, setAuditTrails] = useState<Record<string, AuditEntry[]>>({});
+  const [loadingAudit, setLoadingAudit] = useState<Record<string, boolean>>({});
+  const [auditErrors, setAuditErrors] = useState<Record<string, string>>({});
+
   // Export feedback state
   const [exportingId, setExportingId] = useState<string | null>(null);
 
-  const fetchAll = () => {
+  const fetchAll = useCallback((filter?: string) => {
+    const activeFilter = filter !== undefined ? filter : statusFilter;
+    const filterParam = activeFilter === "all" ? undefined : activeFilter;
+
     loadSeed()
       .then((seedData) => {
         setBundle(seedData);
-        return listBatches();
+        return Promise.all([
+          listBatches(filterParam),
+          listLockedWallets(),
+        ]);
       })
-      .then((res) => {
+      .then(([res, locked]) => {
         if (res.offline) {
           setOffline(true);
-          setBatches(SAMPLE_BATCHES);
+          const filteredSamples = filterParam
+            ? SAMPLE_BATCHES.filter((b) => b.status === filterParam)
+            : SAMPLE_BATCHES;
+          setBatches(filteredSamples);
         } else {
           setOffline(false);
           setBatches(res.batches);
         }
+        setLockedWallets(locked);
         setLoading(false);
       })
       .catch((err) => {
@@ -126,11 +148,11 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
         setBatches(SAMPLE_BATCHES);
         setLoading(false);
       });
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    fetchAll(statusFilter);
+  }, [fetchAll, statusFilter]);
 
   // Derived list of wallets matching selected cause
   const matchingWallets = useMemo(() => {
@@ -140,9 +162,23 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
     );
   }, [bundle, selectedCause]);
 
+  // Exclude locked wallets (either in an open batch or in 30-day cooldown)
+  const lockedMap = useMemo(() => {
+    const map = new Map<string, LockedWallet>();
+    for (const lw of lockedWallets) {
+      map.set(lw.wallet_id, lw);
+    }
+    return map;
+  }, [lockedWallets]);
+
+  const eligibleWallets = useMemo(() => {
+    return matchingWallets.filter((w) => !lockedMap.has(w.wallet_id));
+  }, [matchingWallets, lockedMap]);
+
+  const excludedCount = matchingWallets.length - eligibleWallets.length;
   const selectedRemedy = bundle?.remedies[selectedCause];
   const unitCost = selectedRemedy?.unit_cost_bdt ?? 15;
-  const totalCost = matchingWallets.length * unitCost;
+  const totalCost = eligibleWallets.length * unitCost;
 
   // Handle Propose Batch
   const handlePropose = async () => {
@@ -150,8 +186,12 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       setProposeError("You must be logged in as an Analyst to propose batches.");
       return;
     }
-    if (matchingWallets.length === 0) {
-      setProposeError(`No attributed wallets found for ${CAUSE_LABELS[selectedCause]}.`);
+    if (eligibleWallets.length === 0) {
+      setProposeError(
+        excludedCount > 0
+          ? `All ${matchingWallets.length} ${CAUSE_LABELS[selectedCause]} wallets are currently locked in open batches or in 30-day cooldown.`
+          : `No attributed wallets found for ${CAUSE_LABELS[selectedCause]}.`
+      );
       return;
     }
 
@@ -159,7 +199,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
     setProposeError(null);
     setProposeSuccess(null);
 
-    const walletIds = matchingWallets.map((w) => w.wallet_id);
+    const walletIds = eligibleWallets.map((w) => w.wallet_id);
 
     try {
       // Simulated locally only when the write path is offline (503); real API errors are shown.
@@ -180,6 +220,8 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
         : await proposeBatch(selectedCause, walletIds);
       setBatches((prev) => [created, ...prev]);
       setProposeSuccess(`Batch ${created.id} successfully proposed with ${walletIds.length} wallets!`);
+      // Refresh locked wallets
+      listLockedWallets().then(setLockedWallets).catch(() => {});
     } catch (err) {
       setProposeError(err instanceof Error ? err.message : "Failed to propose batch.");
     } finally {
@@ -213,10 +255,65 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       setBatches((prev) => prev.map((b) => (b.id === batch.id ? updated : b)));
       setDecideModal(null);
       setDecisionNote("");
+      // Refresh locked wallets and clear any cached audit trail for this batch
+      listLockedWallets().then(setLockedWallets).catch(() => {});
+      setAuditTrails((prev) => {
+        const next = { ...prev };
+        delete next[batch.id];
+        return next;
+      });
     } catch (err) {
       setDecisionError(err instanceof Error ? err.message : `Failed to ${action} batch.`);
     } finally {
       setDeciding(false);
+    }
+  };
+
+  // Handle Toggle Audit History
+  const toggleAudit = async (batchId: string) => {
+    setExpandedAuditIds((prev) => ({ ...prev, [batchId]: !prev[batchId] }));
+
+    if (!auditTrails[batchId] && !loadingAudit[batchId]) {
+      setLoadingAudit((prev) => ({ ...prev, [batchId]: true }));
+      setAuditErrors((prev) => ({ ...prev, [batchId]: "" }));
+      try {
+        if (offline) {
+          const targetBatch = batches.find((b) => b.id === batchId);
+          const sampleAudit: AuditEntry[] = [
+            {
+              id: `audit-${batchId}-1`,
+              actor_id: targetBatch?.proposed_by || "analyst-uuid",
+              actor_role: "analyst",
+              action: "batch.propose",
+              target_id: batchId,
+              metadata: { wallet_count: targetBatch?.wallet_count || 0 },
+              created_at: targetBatch?.created_at || new Date().toISOString(),
+            },
+          ];
+          if (targetBatch?.status !== "proposed") {
+            sampleAudit.push({
+              id: `audit-${batchId}-2`,
+              actor_id: targetBatch?.decided_by || "approver-uuid",
+              actor_role: "approver",
+              action: targetBatch?.status === "approved" ? "batch.approve" : "batch.reject",
+              target_id: batchId,
+              metadata: { note: targetBatch?.decision_note || "Decision note" },
+              created_at: targetBatch?.decided_at || new Date().toISOString(),
+            });
+          }
+          setAuditTrails((prev) => ({ ...prev, [batchId]: sampleAudit }));
+        } else {
+          const trail = await getBatchAudit(batchId);
+          setAuditTrails((prev) => ({ ...prev, [batchId]: trail }));
+        }
+      } catch (err) {
+        setAuditErrors((prev) => ({
+          ...prev,
+          [batchId]: err instanceof Error ? err.message : "Failed to load audit history.",
+        }));
+      } finally {
+        setLoadingAudit((prev) => ({ ...prev, [batchId]: false }));
+      }
     }
   };
 
@@ -227,30 +324,43 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       let payload: any;
       try {
         payload = await exportBatch(batch.id);
-      } catch {
-        payload = {
-          batch_id: batch.id,
-          cause: batch.cause,
-          remedy_code: batch.remedy_code,
-          wallet_count: batch.wallet_count,
-          cost_bdt: batch.wallet_count * batch.unit_cost_bdt,
-          approved_by: batch.decided_by || user?.email || "approver@whyquiet.demo",
-          approved_at: batch.decided_at || new Date().toISOString(),
-          wallet_ids: matchingWallets.slice(0, batch.wallet_count).map((w) => w.wallet_id),
-        };
+      } catch (err: any) {
+        if (offline || (err instanceof Error && (err.message.includes("503") || err.message.includes("offline")))) {
+          const batchMatchingWallets = bundle
+            ? bundle.wallets.filter(
+                (w) => w.verdict === "attributed" && w.cause === batch.cause
+              )
+            : [];
+          payload = {
+            batch_id: batch.id,
+            cause: batch.cause,
+            remedy_code: batch.remedy_code,
+            wallet_count: batch.wallet_count,
+            cost_bdt: batch.wallet_count * batch.unit_cost_bdt,
+            approved_by: batch.decided_by || user?.email || "approver@whyquiet.demo",
+            approved_at: batch.decided_at || batch.created_at || "2026-10-04T00:00:00.000Z",
+            wallet_ids: batchMatchingWallets.slice(0, batch.wallet_count).map((w) => w.wallet_id),
+            sample: true,
+          };
+        } else {
+          throw err;
+        }
       }
 
+      const isSampleFile = !!payload.sample || offline;
       const blob = new Blob([JSON.stringify(payload, null, 2)], {
         type: "application/json",
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `campaign-${batch.id}.json`;
+      a.download = isSampleFile ? `campaign-SAMPLE-${batch.id}.json` : `campaign-${batch.id}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    } catch (err) {
+      setProposeError(err instanceof Error ? err.message : "Failed to export campaign.");
     } finally {
       setExportingId(null);
     }
@@ -290,11 +400,12 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
       {/* 503 Offline Notice Banner (Cutline 2) */}
       {offline && (
         <div
+          role="status"
           className="p-3.5 rounded-[var(--radius)] bg-[var(--surface-2)] border border-[var(--border)] flex items-center justify-between gap-4"
           data-testid="write-path-offline-banner"
         >
           <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-            <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-[var(--warning)] animate-pulse" aria-hidden="true" />
             <span>
               <strong>Write path offline.</strong> Read-only screens still work; the batches below are samples and batch actions are simulated locally.
             </span>
@@ -333,6 +444,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               <Select
                 id="propose-cause-select"
                 value={selectedCause}
+                aria-label="Select Diagnosed Cause"
                 onChange={(e) => {
                   setSelectedCause(e.target.value as Cause);
                   setProposeSuccess(null);
@@ -346,13 +458,18 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               />
             </Field>
 
-            <div className="p-3.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] space-y-2 text-xs">
-              <div className="flex justify-between text-[var(--text-muted)]">
+            <div className="p-3.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] space-y-2 text-xs" role="region" aria-label="Batch Summary Estimate">
+              <div className="flex justify-between items-center text-[var(--text-muted)]">
                 <span>Eligible Wallets:</span>
                 <span className="font-mono font-bold text-[var(--text)]" data-testid="eligible-wallets-count">
-                  {matchingWallets.length}
+                  {eligibleWallets.length}
                 </span>
               </div>
+              {excludedCount > 0 && (
+                <div className="text-[10px] text-[var(--warning)] font-mono text-right" data-testid="excluded-wallets-note">
+                  ({excludedCount} excluded: open batch or 30d cooldown)
+                </div>
+              )}
               <div className="flex justify-between text-[var(--text-muted)]">
                 <span>Remedy Code:</span>
                 <span className="font-mono text-[var(--accent)]">{selectedRemedy?.remedy_code ?? "—"}</span>
@@ -373,14 +490,14 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               <Button
                 variant="primary"
                 onClick={handlePropose}
-                disabled={proposing || matchingWallets.length === 0}
+                disabled={proposing || eligibleWallets.length === 0}
                 data-testid="propose-batch-btn"
                 className="w-full"
               >
-                {proposing ? "Proposing Batch..." : `Propose Batch (${matchingWallets.length} Wallets)`}
+                {proposing ? "Proposing Batch..." : `Propose Batch (${eligibleWallets.length} Wallets)`}
               </Button>
             ) : user?.role === "approver" ? (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] text-center">
+              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-xs text-[var(--text-muted)] text-center" role="status">
                 Signed in as <strong>Approver</strong>. Only Analysts can propose new batches.
               </div>
             ) : (
@@ -395,12 +512,12 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
             )}
 
             {proposeSuccess && (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(94,200,180,0.15)] border border-[var(--accent)] text-xs text-[var(--accent)]" data-testid="propose-success-msg">
+              <div role="status" aria-live="polite" className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(94,200,180,0.15)] border border-[var(--accent)] text-xs text-[var(--accent)]" data-testid="propose-success-msg">
                 {proposeSuccess}
               </div>
             )}
             {proposeError && (
-              <div className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(235,94,85,0.15)] border border-[var(--danger)] text-xs text-[var(--danger)]" data-testid="propose-error-msg">
+              <div role="alert" aria-live="polite" className="p-2.5 rounded-[var(--radius-sm)] bg-[rgba(235,94,85,0.15)] border border-[var(--danger)] text-xs text-[var(--danger)]" data-testid="propose-error-msg">
                 {proposeError}
               </div>
             )}
@@ -424,7 +541,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                     <div className="text-[10px] uppercase font-bold text-[var(--text-muted)] mb-1">
                       Bangla Copy (বাংলা)
                     </div>
-                    <div className="text-[var(--text)] leading-relaxed font-bangla">
+                    <div lang="bn" className="text-[var(--text)] leading-relaxed font-bangla">
                       {selectedRemedy.message_bn}
                     </div>
                   </div>
@@ -433,7 +550,7 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                     <div className="text-[10px] uppercase font-bold text-[var(--text-muted)] mb-1">
                       English Copy
                     </div>
-                    <div className="text-[var(--text)] leading-relaxed">
+                    <div lang="en" className="text-[var(--text)] leading-relaxed">
                       {selectedRemedy.message_en}
                     </div>
                   </div>
@@ -448,20 +565,41 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
 
       {/* Section 2: Batches Governance List */}
       <Card className="p-5 sm:p-6 space-y-4" data-testid="batches-list-card">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="t-md font-semibold text-[var(--text)]">2. Governance &amp; Batch Queue</h2>
             <p className="t-xs text-[var(--text-muted)] mt-0.5">
-              Review proposed batches. Approvers can authorize campaign dispatch; self-approval is blocked by server policy.
+              Review proposed batches. Approvers authorize campaign dispatch with mandatory audit logging.
             </p>
           </div>
-          <Chip tone="neutral">{batches.length} Total</Chip>
+          {/* Status Filters */}
+          <div className="flex items-center gap-1.5 flex-wrap" role="group" aria-label="Filter batches by status">
+            {(["all", "proposed", "approved", "rejected"] as const).map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setStatusFilter(st)}
+                data-testid={`filter-status-${st}`}
+                className={`text-xs px-2.5 py-1 rounded-[var(--radius-sm)] border font-medium transition-colors ${
+                  statusFilter === st
+                    ? "bg-[var(--accent)] text-[var(--accent-fg)] border-[var(--accent)] font-semibold"
+                    : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text)]"
+                }`}
+              >
+                {st.charAt(0).toUpperCase() + st.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {batches.length === 0 ? (
           <EmptyState
-            title="No Batches Proposed Yet"
-            body="Use the form above to propose your first cause-targeted remedy batch."
+            title="No Batches Found"
+            body={
+              statusFilter !== "all"
+                ? `No ${statusFilter} batches found in the audit record.`
+                : "Use the form above to propose your first cause-targeted remedy batch."
+            }
             testid="batches-empty-state"
           />
         ) : (
@@ -469,13 +607,13 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
             <Table testid="batches-table">
               <thead>
                 <tr>
-                  <th>Batch ID</th>
-                  <th>Cause &amp; Remedy</th>
-                  <th className="text-right">Wallets</th>
-                  <th className="text-right">Total Cost (ASSUMED)</th>
-                  <th>Status</th>
-                  <th>Proposed By</th>
-                  <th className="text-right">Actions</th>
+                  <th scope="col">Batch ID</th>
+                  <th scope="col">Cause &amp; Remedy</th>
+                  <th scope="col" className="text-right">Wallets</th>
+                  <th scope="col" className="text-right">Total Cost (ASSUMED)</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Proposed By</th>
+                  <th scope="col" className="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -484,106 +622,188 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
                   const isApprover = user?.role === "approver";
                   const isProposed = b.status === "proposed";
                   const isApproved = b.status === "approved";
+                  const isExpanded = !!expandedAuditIds[b.id];
+                  const trail = auditTrails[b.id] || [];
+                  const isAuditLoading = !!loadingAudit[b.id];
+                  const auditError = auditErrors[b.id];
 
                   return (
-                    <tr key={b.id} data-testid={`batch-row-${b.id}`}>
-                      <td className="font-mono font-bold text-[var(--accent)] text-xs">
-                        {b.id}
-                      </td>
-                      <td>
-                        <div className="font-medium text-xs text-[var(--text)]">
-                          {CAUSE_LABELS[b.cause] || b.cause}
-                        </div>
-                        <div className="text-[10px] font-mono text-[var(--text-muted)]">
-                          {b.remedy_code}
-                        </div>
-                      </td>
-                      <td className="text-right font-mono tnum text-xs text-[var(--text)]">
-                        {b.wallet_count.toLocaleString()}
-                      </td>
-                      <td className="text-right font-mono tnum text-xs text-[var(--text)]">
-                        {formatBDT(b.wallet_count * b.unit_cost_bdt)}
-                      </td>
-                      <td>
-                        <Chip
-                          tone={
-                            b.status === "approved"
-                              ? "success"
-                              : b.status === "rejected"
-                              ? "danger"
-                              : "warning"
-                          }
-                        >
-                          {b.status.toUpperCase()}
-                        </Chip>
-                      </td>
-                      <td className="text-xs text-[var(--text-muted)]">
-                        <div className="truncate max-w-[150px]" title={b.proposed_by}>
-                          {b.proposed_by}
-                        </div>
-                        <div className="text-[10px] text-[var(--text-faint)]">
-                          {new Date(b.created_at).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* 1. Proposed Batch Actions */}
-                          {isProposed && (
-                            <>
-                              {isProposer ? (
-                                <span
-                                  className="text-[10px] text-[var(--warning)] italic max-w-[160px] text-right inline-block"
-                                  data-testid={`self-approval-notice-${b.id}`}
-                                >
-                                  You proposed this. Another approver must decide.
-                                </span>
-                              ) : isApprover ? (
-                                <div className="flex items-center gap-1.5">
-                                  <Button
-                                    variant="primary"
-                                    onClick={() => setDecideModal({ batch: b, action: "approve" })}
-                                    data-testid={`approve-btn-${b.id}`}
-                                    className="text-xs px-2 py-1 bg-[var(--success)]"
-                                  >
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => setDecideModal({ batch: b, action: "reject" })}
-                                    data-testid={`reject-btn-${b.id}`}
-                                    className="text-xs px-2 py-1 text-[var(--danger)]"
-                                  >
-                                    Reject
-                                  </Button>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-[var(--text-faint)]">
-                                  Awaiting approver
-                                </span>
-                              )}
-                            </>
-                          )}
+                    <tr key={b.id} data-testid={`batch-row-${b.id}`} className="group">
+                      <td colSpan={7} className="p-0 border-b border-[var(--border)]">
+                        <div className="grid grid-cols-7 items-center p-3 sm:px-4 text-xs">
+                          {/* Col 1: Batch ID */}
+                          <div className="font-mono font-bold text-[var(--accent)]">
+                            {b.id}
+                          </div>
 
-                          {/* 2. Approved Batch Action: Export JSON */}
-                          {isApproved && (
-                            <Button
-                              variant="secondary"
-                              onClick={() => handleExport(b)}
-                              disabled={exportingId === b.id}
-                              data-testid={`download-json-btn-${b.id}`}
-                              className="text-xs px-2 py-1"
+                          {/* Col 2: Cause & Remedy */}
+                          <div>
+                            <div className="font-medium text-[var(--text)]">
+                              {CAUSE_LABELS[b.cause] || b.cause}
+                            </div>
+                            <div className="text-[10px] font-mono text-[var(--text-muted)]">
+                              {b.remedy_code}
+                            </div>
+                          </div>
+
+                          {/* Col 3: Wallets */}
+                          <div className="text-right font-mono tnum text-[var(--text)]">
+                            {b.wallet_count.toLocaleString()}
+                          </div>
+
+                          {/* Col 4: Total Cost */}
+                          <div className="text-right font-mono tnum text-[var(--text)]">
+                            {formatBDT(b.wallet_count * b.unit_cost_bdt)}
+                          </div>
+
+                          {/* Col 5: Status */}
+                          <div>
+                            <Chip
+                              tone={
+                                b.status === "approved"
+                                  ? "success"
+                                  : b.status === "rejected"
+                                  ? "danger"
+                                  : "warning"
+                              }
                             >
-                              {exportingId === b.id ? "Exporting..." : "Download JSON"}
-                            </Button>
-                          )}
+                              {b.status.toUpperCase()}
+                            </Chip>
+                          </div>
 
-                          {/* 3. Rejected Details */}
-                          {b.status === "rejected" && (
-                            <span className="text-[10px] text-[var(--danger)] truncate max-w-[140px]" title={b.decision_note || "Rejected"}>
-                              {b.decision_note || "Rejected"}
-                            </span>
-                          )}
+                          {/* Col 6: Proposer */}
+                          <div className="text-[var(--text-muted)]">
+                            <div className="truncate max-w-[130px]" title={b.proposed_by}>
+                              {b.proposed_by}
+                            </div>
+                            <div className="text-[10px] text-[var(--text-faint)]">
+                              {new Date(b.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+
+                          {/* Col 7: Actions */}
+                          <div className="text-right">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {/* 1. Proposed Actions */}
+                              {isProposed && (
+                                <>
+                                  {isProposer ? (
+                                    <span
+                                      className="text-[10px] text-[var(--warning)] italic max-w-[140px] text-right inline-block"
+                                      data-testid={`self-approval-notice-${b.id}`}
+                                    >
+                                      You proposed this.
+                                    </span>
+                                  ) : isApprover ? (
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        variant="primary"
+                                        onClick={() => setDecideModal({ batch: b, action: "approve" })}
+                                        data-testid={`approve-btn-${b.id}`}
+                                        aria-label={`Approve batch ${b.id}`}
+                                        className="text-[11px] px-2 py-0.5 bg-[var(--success)]"
+                                      >
+                                        Approve
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        onClick={() => setDecideModal({ batch: b, action: "reject" })}
+                                        data-testid={`reject-btn-${b.id}`}
+                                        aria-label={`Reject batch ${b.id}`}
+                                        className="text-[11px] px-2 py-0.5 text-[var(--danger)]"
+                                      >
+                                        Reject
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-[var(--text-faint)]">
+                                      Pending
+                                    </span>
+                                  )}
+                                </>
+                              )}
+
+                              {/* 2. Export Download Button */}
+                              {isApproved && (
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => handleExport(b)}
+                                  disabled={exportingId === b.id}
+                                  data-testid={`download-json-btn-${b.id}`}
+                                  aria-label={`Download campaign JSON for batch ${b.id}`}
+                                  className="text-[11px] px-2 py-0.5"
+                                >
+                                  {exportingId === b.id ? "Exporting..." : "Export JSON"}
+                                </Button>
+                              )}
+
+                              {/* 3. Audit History Accordion Toggle */}
+                              <Button
+                                variant="ghost"
+                                onClick={() => toggleAudit(b.id)}
+                                data-testid={`history-btn-${b.id}`}
+                                aria-label={`Toggle audit history for batch ${b.id}`}
+                                className="text-[11px] px-1.5 py-0.5 text-[var(--text-muted)] hover:text-[var(--text)]"
+                              >
+                                {isExpanded ? "Hide History" : "History"}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Expandable Audit Timeline Panel */}
+                        {isExpanded && (
+                          <div
+                            className="p-3.5 bg-[var(--surface-2)] border-t border-[var(--border)] space-y-2 text-xs"
+                            data-testid={`audit-timeline-${b.id}`}
+                          >
+                            <div className="font-semibold text-[11px] uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-between">
+                              <span>Audit Trail Timeline</span>
+                              <span className="text-[10px] font-normal text-[var(--text-faint)]">Immutable Ledger</span>
+                            </div>
+
+                            {isAuditLoading ? (
+                              <div className="text-xs text-[var(--text-muted)] py-2">Loading audit entries...</div>
+                            ) : auditError ? (
+                              <div className="text-xs text-[var(--danger)] py-1">{auditError}</div>
+                            ) : trail.length === 0 ? (
+                              <div className="text-xs text-[var(--text-muted)] py-1">No audit entries found.</div>
+                            ) : (
+                              <div className="space-y-2.5 pt-1">
+                                {trail.map((entry, idx) => (
+                                  <div
+                                    key={entry.id || idx}
+                                    className="flex items-start gap-2.5 border-l-2 border-[var(--accent)] pl-2.5 py-0.5"
+                                    data-testid={`audit-entry-${entry.action}`}
+                                  >
+                                    <div className="flex-1 space-y-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-[var(--text)] uppercase text-[10px]">
+                                          {entry.action.replace("batch.", "")}
+                                        </span>
+                                        <Chip tone={entry.actor_role === "approver" ? "success" : "accent"}>
+                                          {entry.actor_role}
+                                        </Chip>
+                                        <span className="text-[10px] text-[var(--text-faint)] font-mono">
+                                          {new Date(entry.created_at).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      {entry.metadata?.note ? (
+                                        <div className="text-[11px] text-[var(--text-muted)] italic">
+                                          &ldquo;{String(entry.metadata.note)}&rdquo;
+                                        </div>
+                                      ) : entry.metadata?.wallet_count ? (
+                                        <div className="text-[11px] text-[var(--text-muted)]">
+                                          Bundled {String(entry.metadata.wallet_count)} wallets with remedy package.
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -625,6 +845,8 @@ export default function Batches({ user: propUser, onOpenLogin }: BatchesProps) {
               onChange={(e) => setDecisionNote(e.target.value)}
               placeholder="e.g. Authorized for SMS notification push"
               data-testid="decision-note-input"
+              required
+              aria-required="true"
               autoFocus
             />
           </Field>

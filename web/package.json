@@ -17,6 +17,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
@@ -27,5 +28,4 @@
     "typescript": "^5.8.2",
     "vite": "^8.3.0"
   }
-
 }

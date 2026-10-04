@@ -130,6 +130,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
   if (loading) {
     return (
       <div className="space-y-6" data-testid="queue-loading">
+        <h1 className="t-2xl font-bold text-[var(--text)]">Triage Queue</h1>
         {/* Skeleton KPI summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
@@ -179,6 +180,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
   if (error || !bundle) {
     return (
       <div className="py-8" data-testid="queue-error">
+        <h1 className="t-2xl font-bold text-[var(--text)] mb-6">Triage Queue</h1>
         <ErrorState
           title="Triage Queue Unavailable"
           body={error || "Could not retrieve wallet seed data. Please check network connection or verify offline seed bundle."}
@@ -192,64 +194,79 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
   /* ------------------- SUCCESS & EMPTY STATES ------------------- */
   return (
     <div className="space-y-6" data-testid="queue-view">
-      {/* KPI Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-testid="summary-cards">
-        <Card className="p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Cohort Wallets
-            </div>
-            <div className="t-2xl font-bold mt-1 text-[var(--text)] tnum" data-testid="kpi-total">
-              {summary?.total ?? 0}
-            </div>
-          </div>
-          <div className="text-xs text-[var(--text-faint)] mt-2">
-            Population B sample (τ={bundle.meta.tau}, δ={bundle.meta.delta})
-          </div>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Attributed
-            </div>
-            <div className="t-2xl font-bold mt-1 text-[var(--accent)] tnum" data-testid="kpi-attributed">
-              {summary?.attributed ?? 0}
-            </div>
-          </div>
-          <div className="text-xs text-[var(--text-faint)] mt-2">
-            Diagnosed with actionable cause remedy
-          </div>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Refused (Ambiguous)
-            </div>
-            <div className="t-2xl font-bold mt-1 text-[var(--text-muted)] tnum" data-testid="kpi-refused">
-              {summary?.refused ?? 0}
-            </div>
-          </div>
-          <div className="text-xs text-[var(--text-faint)] mt-2">
-            Calibrated refusal (budget preserved)
-          </div>
-        </Card>
-
-        <Card className="p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-              Refusal Rate
-            </div>
-            <div className="t-2xl font-bold mt-1 text-[var(--text)] tnum" data-testid="kpi-refusal-rate">
-              {summary?.refusalRate}%
-            </div>
-          </div>
-          <div className="text-xs text-[var(--text-faint)] mt-2">
-            Safety threshold enforcement
-          </div>
-        </Card>
+      {/* Page Title & Intro */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 className="t-2xl font-bold text-[var(--text)]">Cause Desk</h1>
+          <p className="t-xs text-[var(--text-muted)] mt-0.5">
+            Triage Queue — Dormant wallet diagnosis and calibrated churn cause attribution console.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Chip tone="accent">Cohort B Sample</Chip>
+        </div>
       </div>
+
+      {/* KPI Summary Cards */}
+      <section aria-label="Cohort Summary Metrics">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" data-testid="summary-cards">
+          <Card className="p-4 sm:p-5 flex flex-col justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Cohort Wallets
+              </div>
+              <div className="t-2xl font-bold mt-1 text-[var(--text)] tnum" data-testid="kpi-total">
+                {summary?.total ?? 0}
+              </div>
+            </div>
+            <div className="text-xs text-[var(--text-faint)] mt-2">
+              Population B sample (τ={bundle.meta.tau}, δ={bundle.meta.delta})
+            </div>
+          </Card>
+
+          <Card className="p-4 sm:p-5 flex flex-col justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Attributed
+              </div>
+              <div className="t-2xl font-bold mt-1 text-[var(--accent)] tnum" data-testid="kpi-attributed">
+                {summary?.attributed ?? 0}
+              </div>
+            </div>
+            <div className="text-xs text-[var(--text-faint)] mt-2">
+              Diagnosed with actionable cause remedy
+            </div>
+          </Card>
+
+          <Card className="p-4 sm:p-5 flex flex-col justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Refused (Ambiguous)
+              </div>
+              <div className="t-2xl font-bold mt-1 text-[var(--text-muted)] tnum" data-testid="kpi-refused">
+                {summary?.refused ?? 0}
+              </div>
+            </div>
+            <div className="text-xs text-[var(--text-faint)] mt-2">
+              Calibrated refusal (budget preserved)
+            </div>
+          </Card>
+
+          <Card className="p-4 sm:p-5 flex flex-col justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Refusal Rate
+              </div>
+              <div className="t-2xl font-bold mt-1 text-[var(--text)] tnum" data-testid="kpi-refusal-rate">
+                {summary?.refusalRate}%
+              </div>
+            </div>
+            <div className="text-xs text-[var(--text-faint)] mt-2">
+              Safety threshold enforcement
+            </div>
+          </Card>
+        </div>
+      </section>
 
       {/* Manual Triage Lookup / Quick Evaluation Form */}
       <Card className="p-4 sm:p-5" data-testid="lookup-card">
@@ -263,6 +280,9 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
 
           <form onSubmit={handleLookupSubmit} className="flex flex-col sm:flex-row gap-2.5 w-full md:w-auto items-center" noValidate>
             <div className="w-full sm:w-64 relative">
+              <label htmlFor="wallet-lookup-input" className="sr-only">
+                Wallet ID for quick diagnostic (e.g. W-7K9A1B)
+              </label>
               <Input
                 id="wallet-lookup-input"
                 data-testid="wallet-lookup-input"
@@ -274,11 +294,13 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
                 }}
                 mono
                 invalid={Boolean(lookupError)}
+                aria-invalid={Boolean(lookupError)}
+                aria-describedby={lookupError ? "lookup-error-msg" : undefined}
                 maxLength={8}
                 className="h-[40px] text-xs"
               />
               {lookupError && (
-                <span className="absolute -bottom-4 left-1 text-[11px] text-[var(--danger)] whitespace-nowrap" role="alert">
+                <span id="lookup-error-msg" className="absolute -bottom-4 left-1 text-[11px] text-[var(--danger)] whitespace-nowrap" role="alert">
                   {lookupError}
                 </span>
               )}
@@ -298,10 +320,12 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
         {lookupSuccess && (
           <div
             data-testid="lookup-success-msg"
+            role="status"
+            aria-live="polite"
             className="mt-4 p-2.5 px-3.5 rounded-[var(--radius-sm)] text-xs flex items-center gap-2"
             style={{ background: "var(--success-soft)", color: "var(--success)", border: "1px solid var(--success-soft)" }}
           >
-            <span className="w-2 h-2 rounded-full bg-current inline-block" />
+            <span className="w-2 h-2 rounded-full bg-current inline-block" aria-hidden="true" />
             <span>{lookupSuccess}</span>
           </div>
         )}
@@ -309,15 +333,20 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
 
       {/* Filter and Control Bar */}
       <Card className="p-4">
+        <h2 className="sr-only">Queue Filters and Search</h2>
         <div className="flex flex-col lg:flex-row gap-3 lg:items-center justify-between">
           {/* Search box with inline cross clear button */}
           <div className="w-full lg:w-72 relative flex items-center">
+            <label htmlFor="search-wallets" className="sr-only">
+              Search wallet ID or worker sector
+            </label>
             <Input
               id="search-wallets"
               data-testid="search-input"
               placeholder="Search wallet ID or sector..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search wallet ID or worker sector"
               className="h-[40px] text-xs pr-8"
             />
             {searchQuery && (
@@ -325,7 +354,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
                 type="button"
                 onClick={() => setSearchQuery("")}
                 data-testid="clear-search-btn"
-                aria-label="Clear search"
+                aria-label="Clear search text"
                 className="search-clear-btn"
               >
                 ✕
@@ -339,6 +368,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
               <Select
                 id="filter-verdict"
                 data-testid="filter-verdict"
+                aria-label="Filter by verdict"
                 value={verdictFilter}
                 onChange={(e) => setVerdictFilter(e.target.value)}
                 className="w-full"
@@ -353,6 +383,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
               <Select
                 id="filter-cause"
                 data-testid="filter-cause"
+                aria-label="Filter by churn cause"
                 value={causeFilter}
                 onChange={(e) => setCauseFilter(e.target.value)}
                 disabled={verdictFilter === "refused"}
@@ -371,6 +402,7 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
               <Select
                 id="sort-by"
                 data-testid="sort-by"
+                aria-label="Sort wallets by"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="w-full"
@@ -411,25 +443,25 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
         />
       ) : (
         /* ------------------- STATE 4: SUCCESS STATE TABLE ------------------- */
-        <div className="space-y-2">
+        <section className="space-y-2" aria-label="Triage Queue Wallet Table">
           <div className="flex items-center justify-between text-xs text-[var(--text-muted)] px-1">
             <span>
               Showing <strong className="text-[var(--text)]">{filteredWallets.length}</strong> of {bundle.wallets.length} wallets
             </span>
-            <span className="hidden sm:inline">Click any row to inspect decline shape & posterior</span>
+            <span className="hidden sm:inline">Click any row or press Enter to inspect decline shape & posterior</span>
           </div>
 
           <Table testid="queue-table">
             <thead>
               <tr>
-                <th style={{ width: "130px" }}>Wallet ID</th>
-                <th>Worker / Cycle</th>
-                <th className="text-right">Silent</th>
-                <th>Verdict</th>
-                <th>Attributed Cause</th>
-                <th className="text-right">Confidence</th>
-                <th className="hidden md:table-cell">Rule Baseline</th>
-                <th style={{ width: "90px" }} className="text-right whitespace-nowrap">Action</th>
+                <th scope="col" style={{ width: "130px" }}>Wallet ID</th>
+                <th scope="col">Worker / Cycle</th>
+                <th scope="col" className="text-right">Silent</th>
+                <th scope="col">Verdict</th>
+                <th scope="col">Attributed Cause</th>
+                <th scope="col" className="text-right">Confidence</th>
+                <th scope="col" className="hidden md:table-cell">Rule Baseline</th>
+                <th scope="col" style={{ width: "90px" }} className="text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -445,7 +477,15 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
                     key={wallet.wallet_id}
                     data-testid={`row-${wallet.wallet_id}`}
                     onClick={() => handleRowClick(wallet.wallet_id)}
-                    className="cursor-pointer hover:bg-[var(--surface-2)] transition-colors"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleRowClick(wallet.wallet_id);
+                      }
+                    }}
+                    tabIndex={0}
+                    aria-label={`Inspect wallet ${wallet.wallet_id}, ${wallet.worker_type}, ${isAttributed ? "Attributed " + (wallet.cause ? CAUSE_LABELS[wallet.cause] : "") : "Refused"}`}
+                    className="cursor-pointer hover:bg-[var(--surface-2)] transition-colors focus:outline-none focus:bg-[var(--surface-2)]"
                   >
                     {/* Wallet ID */}
                     <td className="font-mono font-medium text-[var(--accent)] tnum">
@@ -501,16 +541,24 @@ export default function Queue({ onNavigate }: { onNavigate?: (walletId: string) 
 
                     {/* Action */}
                     <td className="text-right whitespace-nowrap">
-                      <span className="text-xs text-[var(--accent)] font-medium hover:underline inline-flex items-center gap-1 justify-end">
+                      <a
+                        href={`#/w/${wallet.wallet_id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleRowClick(wallet.wallet_id);
+                        }}
+                        aria-label={`Inspect wallet ${wallet.wallet_id}`}
+                        className="text-xs text-[var(--accent)] font-medium hover:underline inline-flex items-center gap-1 justify-end"
+                      >
                         Inspect <span aria-hidden="true">&rarr;</span>
-                      </span>
+                      </a>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
           </Table>
-        </div>
+        </section>
       )}
     </div>
   );
