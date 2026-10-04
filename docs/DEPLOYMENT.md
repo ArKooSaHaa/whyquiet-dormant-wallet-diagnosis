@@ -96,13 +96,13 @@ The verification script checks:
 
 ## Supabase Database Setup & Migrations
 
+The deploy workflow runs `supabase db push` before every production deploy, so merged migrations reach the live project automatically (D51). It needs the GitHub secrets `SUPABASE_ACCESS_TOKEN` (Supabase dashboard -> Account -> Access Tokens) and `SUPABASE_DB_PASSWORD`. A migration must keep working with the code that is live, because the schema changes a minute before the new code ships.
+
 If setting up a fresh Supabase instance for the write path:
-1. Apply both migrations in `supabase/migrations/` (in order):
+1. Apply all migrations in `supabase/migrations/` (in filename order):
    ```bash
-   # Using Supabase CLI:
+   supabase link --project-ref <ref>
    supabase db push
-   # Or paste the SQL in Supabase SQL Editor:
-   # 20261003180000_audit_log.sql, then 20261003215000_remedy_batches.sql
    ```
 2. Seed the demo users (`analyst@whyquiet.demo`, `approver@whyquiet.demo`):
    ```bash

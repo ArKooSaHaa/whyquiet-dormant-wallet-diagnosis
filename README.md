@@ -194,12 +194,12 @@ Commands are for bash (Linux, macOS, Git Bash on Windows). PowerShell equivalent
 
 7. **Optional: set up the write-path database** (Supabase)
    1. Create a project at https://supabase.com and copy its URL and `service_role` key into `.env`.
-   2. Apply the two migrations in `supabase/migrations/` (in filename order):
+   2. Apply all migrations in `supabase/migrations/` (in filename order):
       ```bash
       supabase link --project-ref <your-project-ref>
       supabase db push
       ```
-      Or paste `20261003180000_audit_log.sql`, then `20261003215000_remedy_batches.sql`, into the Supabase SQL editor.
+      For the live project, the deploy workflow does this automatically on every merge to `main` (D51).
    3. Set `DEMO_ANALYST_PASSWORD` and `DEMO_APPROVER_PASSWORD` in `.env`, then create the two demo accounts (idempotent):
       ```bash
       uv run --env-file .env python supabase/seed_demo_users.py
