@@ -159,7 +159,7 @@ export default function Evidence() {
       </div>
 
       {/* 1. ML Rigor Panel */}
-      <div className="space-y-3" data-testid="ml-rigor-panel">
+      <section className="space-y-3" aria-label="Model Generalization and Calibration Metrics" data-testid="ml-rigor-panel">
         <h2 className="t-md font-semibold text-[var(--text)]">1. Model Generalization &amp; Calibration</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -244,7 +244,7 @@ export default function Evidence() {
             </p>
           </Card>
         </div>
-      </div>
+      </section>
 
       {/* 2. Confusion Matrix on Population B */}
       <Card className="p-5 sm:p-6 space-y-4" data-testid="confusion-matrix-card">
@@ -259,9 +259,9 @@ export default function Evidence() {
           <table className="data-table text-xs" data-testid="confusion-matrix-table">
             <thead>
               <tr>
-                <th className="bg-[var(--surface-2)]">True Cause \ Predicted</th>
+                <th scope="col" className="bg-[var(--surface-2)]">True Cause \ Predicted</th>
                 {report.confusion_b.labels.map((lbl) => (
-                  <th key={lbl} className="text-center">
+                  <th scope="col" key={lbl} className="text-center">
                     {CAUSE_LABELS[lbl]}
                   </th>
                 ))}
@@ -272,9 +272,9 @@ export default function Evidence() {
                 const rowCause = report.confusion_b.labels[rIdx];
                 return (
                   <tr key={rowCause}>
-                    <td className="font-semibold text-[var(--text)] bg-[var(--surface-2)]">
+                    <th scope="row" className="font-semibold text-left text-[var(--text)] bg-[var(--surface-2)] p-2">
                       {CAUSE_LABELS[rowCause]}
-                    </td>
+                    </th>
                     {row.map((val, cIdx) => {
                       const isDiagonal = rIdx === cIdx;
                       const intensity = Math.min(1, Math.max(0.08, val / maxMatrixVal));
@@ -314,11 +314,11 @@ export default function Evidence() {
         <Table testid="fairness-table">
           <thead>
             <tr>
-              <th>Slice</th>
-              <th>Demographic Subgroup</th>
-              <th className="text-right">Cohort Size (N)</th>
-              <th className="text-right">Macro-F1 (Pop B)</th>
-              <th className="text-right">Refusal Rate</th>
+              <th scope="col">Slice</th>
+              <th scope="col">Demographic Subgroup</th>
+              <th scope="col" className="text-right">Cohort Size (N)</th>
+              <th scope="col" className="text-right">Macro-F1 (Pop B)</th>
+              <th scope="col" className="text-right">Refusal Rate</th>
             </tr>
           </thead>
           <tbody>
@@ -359,7 +359,12 @@ export default function Evidence() {
           </div>
 
           {/* Recovery Rate Segmented Toggle */}
-          <div className="flex items-center gap-2 bg-[var(--surface-2)] p-1 rounded-[var(--radius)]" data-testid="rate-toggle-group">
+          <div
+            role="group"
+            aria-label="Customer response rate scenario"
+            className="flex items-center gap-2 bg-[var(--surface-2)] p-1 rounded-[var(--radius)]"
+            data-testid="rate-toggle-group"
+          >
             {([0.01, 0.04, 0.08] as const).map((r) => {
               const pct = (r * 100).toFixed(0);
               const isSelected = rate === r;
@@ -369,6 +374,8 @@ export default function Evidence() {
                   type="button"
                   onClick={() => setRate(r)}
                   data-testid={`rate-toggle-${pct}`}
+                  aria-pressed={isSelected}
+                  aria-label={`${pct}% response rate scenario${r === 0.04 ? " (Base)" : ""}`}
                   className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold cursor-pointer transition-colors border-none ${
                     isSelected
                       ? "bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-1)]"
@@ -392,7 +399,11 @@ export default function Evidence() {
         ) : (
           <div className="space-y-6">
             {/* Grouped Bar Chart */}
-            <div className="w-full h-72 pt-2">
+            <div
+              className="w-full h-72 pt-2"
+              role="region"
+              aria-label="Net economic value comparison chart between Rule Baseline, WhyQuiet Model, and Oracle"
+            >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={moneyChartData} margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -435,11 +446,11 @@ export default function Evidence() {
             <Table testid="money-table">
               <thead>
                 <tr>
-                  <th>Strategy</th>
-                  <th className="text-right">Wallets Actioned</th>
-                  <th className="text-right">Recovered Users</th>
-                  <th className="text-right">Remedy Cost (ASSUMED)</th>
-                  <th className="text-right">Net Value BDT (ASSUMED)</th>
+                  <th scope="col">Strategy</th>
+                  <th scope="col" className="text-right">Wallets Actioned</th>
+                  <th scope="col" className="text-right">Recovered Users</th>
+                  <th scope="col" className="text-right">Remedy Cost (ASSUMED)</th>
+                  <th scope="col" className="text-right">Net Value BDT (ASSUMED)</th>
                 </tr>
               </thead>
               <tbody>

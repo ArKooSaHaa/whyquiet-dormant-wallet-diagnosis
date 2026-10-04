@@ -51,6 +51,9 @@ test.describe("Batches & Governance Page", () => {
   });
 
   test("self-approval protection: proposer cannot approve their own batch", async ({ page }) => {
+    await page.route("**/api/batches*", (route) =>
+      route.fulfill({ status: 503, json: { detail: "Write path offline" } })
+    );
     await page.goto("/#/batches");
 
     // Sign in as Analyst who proposed BATCH-8910
@@ -59,10 +62,13 @@ test.describe("Batches & Governance Page", () => {
     // Verify self-approval notice on BATCH-8910
     const selfNotice = page.getByTestId("self-approval-notice-BATCH-8910");
     await expect(selfNotice).toBeVisible();
-    await expect(selfNotice).toContainText("Another approver must decide");
+    await expect(selfNotice).toContainText("You proposed this");
   });
 
   test("approver flow: can approve batch with mandatory decision note", async ({ page }) => {
+    await page.route("**/api/batches*", (route) =>
+      route.fulfill({ status: 503, json: { detail: "Write path offline" } })
+    );
     await page.goto("/#/batches");
 
     // Sign in as Approver
@@ -86,6 +92,9 @@ test.describe("Batches & Governance Page", () => {
   });
 
   test("campaign JSON download triggers for approved batches", async ({ page }) => {
+    await page.route("**/api/batches*", (route) =>
+      route.fulfill({ status: 503, json: { detail: "Write path offline" } })
+    );
     await page.goto("/#/batches");
 
     // BATCH-8909 is approved in sample data
@@ -95,7 +104,70 @@ test.describe("Batches & Governance Page", () => {
     const downloadPromise = page.waitForEvent("download");
     await downloadBtn.click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toContain("campaign-BATCH-8909.json");
+    expect(download.suggestedFilename()).toContain("campaign-SAMPLE-BATCH-8909.json");
+  });
+
+  test("audit history timeline expands and displays entries", async ({ page }) => {
+    const id = "44444444-4444-4444-4444-444444444444";
+    await page.route(/\/api\/batches/, async (route) => {
+      if (route.request().url().includes("/audit")) {
+        return route.fulfill({
+          json: [
+            {
+              id: "audit-1",
+              actor_id: "analyst-uuid",
+              actor_role: "analyst",
+              action: "batch.propose",
+              target_id: id,
+              metadata: { wallet_count: 50 },
+              created_at: new Date().toISOString(),
+            },
+          ],
+        });
+      }
+      return route.fulfill({
+        json: [
+          {
+            id,
+            cause: "fee_shock",
+            remedy_code: "fee_shock_waiver",
+            unit_cost_bdt: 25,
+            wallet_count: 50,
+            status: "proposed",
+            proposed_by: "analyst-uuid",
+            decided_by: null,
+            decided_at: null,
+            decision_note: null,
+            created_at: new Date().toISOString(),
+          },
+        ],
+      });
+    });
+
+    await page.goto("/#/batches");
+    const historyBtn = page.getByTestId(`history-btn-${id}`);
+    await expect(historyBtn).toBeVisible();
+    await historyBtn.click();
+
+    await expect(page.getByTestId(`audit-timeline-${id}`)).toBeVisible();
+    await expect(page.getByTestId("audit-entry-batch.propose")).toBeVisible();
+  });
+
+  test("session expired on 401 re-opens login modal with notice", async ({ page }) => {
+    await page.route(/\/api\/batches/, (route) => {
+      if (route.request().method() === "POST") {
+        return route.fulfill({ status: 401, json: { detail: "Invalid or expired token" } });
+      }
+      return route.fulfill({ json: [] });
+    });
+
+    await page.goto("/#/batches");
+    await signIn(page, "analyst");
+    await page.getByTestId("propose-batch-btn").click();
+
+    // Should catch 401, clear stored user, and prompt sign in modal with notice
+    await expect(page.getByTestId("login-modal")).toBeVisible();
+    await expect(page.getByTestId("login-modal")).toContainText("expired");
   });
 
   test("mobile responsiveness at 375px width", async ({ page }) => {
@@ -122,7 +194,7 @@ test.describe("Batches & Governance Page", () => {
       decided_by: null, decided_at: null, decision_note: null, created_at: new Date().toISOString(),
     };
     let rows: object[] = [];
-    await page.route("**/api/batches", (route) => route.fulfill({ json: rows }));
+    await page.route(/\/api\/batches/, (route) => route.fulfill({ json: rows }));
 
     await page.goto("/#/batches");
     await expect(page.getByTestId("batches-empty-state")).toBeVisible();
@@ -138,7 +210,7 @@ test.describe("Batches & Governance Page", () => {
   test("real write path: propose sends the token, a repeat gets 409 and the error is shown", async ({ page }) => {
     const auth: (string | undefined)[] = [];
     let posts = 0;
-    await page.route("**/api/batches", (route) => {
+    await page.route(/\/api\/batches/, (route) => {
       if (route.request().method() === "GET") return route.fulfill({ json: [] });
       auth.push(route.request().headers()["authorization"]);
       const { cause, wallet_ids } = route.request().postDataJSON();
@@ -163,13 +235,16 @@ test.describe("Batches & Governance Page", () => {
 
   test("real write path: a 403 on approve is shown and the batch stays proposed", async ({ page }) => {
     const id = "33333333-3333-4333-8333-333333333333";
-    await page.route("**/api/batches", (route) => route.fulfill({ json: [{
-      id, cause: "job_exit", remedy_code: "job_exit_payroll_reengage", unit_cost_bdt: 15, wallet_count: 2,
-      status: "proposed", proposed_by: "someone-else", decided_by: null, decided_at: null, decision_note: null,
-      created_at: new Date().toISOString(),
-    }] }));
-    await page.route(`**/api/batches/${id}/approve`, (route) =>
-      route.fulfill({ status: 403, json: { detail: "You cannot decide a batch you proposed" } }));
+    await page.route(/\/api\/batches/, (route) => {
+      if (route.request().url().includes("/approve")) {
+        return route.fulfill({ status: 403, json: { detail: "You cannot decide a batch you proposed" } });
+      }
+      return route.fulfill({ json: [{
+        id, cause: "job_exit", remedy_code: "job_exit_payroll_reengage", unit_cost_bdt: 15, wallet_count: 2,
+        status: "proposed", proposed_by: "someone-else", decided_by: null, decided_at: null, decision_note: null,
+        created_at: new Date().toISOString(),
+      }] });
+    });
 
     await page.goto("/#/batches");
     await signIn(page, "approver");

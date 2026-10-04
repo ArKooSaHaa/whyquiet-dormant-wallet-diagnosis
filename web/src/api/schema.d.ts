@@ -90,6 +90,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/wallets/locked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Locked Wallets */
+        get: operations["list_locked_wallets_api_wallets_locked_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/batches/{id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Batch Audit */
+        get: operations["get_batch_audit_api_batches__id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/health": {
         parameters: {
             query?: never;
@@ -111,6 +145,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AuditEntry */
+        AuditEntry: {
+            /** Id */
+            id: string;
+            /** Actor Id */
+            actor_id: string;
+            actor_role: components["schemas"]["UserRole"];
+            /** Action */
+            action: string;
+            /** Target Id */
+            target_id: string;
+            /** Metadata */
+            metadata?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Created At */
+            created_at: string;
+        };
         /** Batch */
         Batch: {
             /** Id */
@@ -188,6 +240,19 @@ export interface components {
              * @default false
              */
             stub: boolean;
+        };
+        /**
+         * LockReason
+         * @enum {string}
+         */
+        LockReason: "open" | "cooldown";
+        /** LockedWallet */
+        LockedWallet: {
+            /** Wallet Id */
+            wallet_id: string;
+            reason: components["schemas"]["LockReason"];
+            /** Until */
+            until?: string | null;
         };
         /** LoginRequest */
         LoginRequest: {
@@ -271,7 +336,11 @@ export interface operations {
     };
     list_batches_api_batches_get: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: components["schemas"]["BatchStatus"] | null;
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -285,6 +354,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Batch"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -401,7 +479,9 @@ export interface operations {
     export_batch_api_batches__id__export_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                authorization?: string | null;
+            };
             path: {
                 id: string;
             };
@@ -416,6 +496,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExportBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_locked_wallets_api_wallets_locked_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LockedWallet"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_batch_audit_api_batches__id__audit_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEntry"][];
                 };
             };
             /** @description Validation Error */

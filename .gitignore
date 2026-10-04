@@ -41,6 +41,9 @@ docs/superpowers/
 .superpowers/
 *.pdf
 *.docx
+docs/PROJECT_REPORT.md
+docs/slides/
+
 
 
 # os / editor

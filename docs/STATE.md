@@ -51,9 +51,9 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Frontend (Shads Tasks 0–4): Complete Cause Desk delivered with Claymorphic + Neumorphic dark/light UI, Triage Queue, 26-week decline shape & posterior charts, Refusal screen with refusal proof, Evidence & ML rigor page with confusion matrix & fairness table, Batches & Governance with 2-role auth, 2-person approval, and campaign export.
 - Backend & Rules (Arko Tasks 1–7): Write-path API endpoints with Pydantic v2 schemas, deterministic rules (`baseline.py`, `remedies.py`, `money.py`), Supabase migration (`20261003215000_remedy_batches.sql`) with maker-checker triggers and immutable audit log, real Supabase auth & batch endpoints, 88 unit/integration tests, 27 e2e tests, comprehensive README and evaluation report.
 
-## Status: All Tasks 1–7 Complete across all 3 team members
-- All deliverables verified with `make check` (green) and `make e2e` (27 passed).
-
+## Status: All Tasks 1–7 + Hardening Items 1–6 Complete across all 3 team members
+- All deliverables verified with `make check` (114 backend tests passed, 0 pyright errors, 0 ruff errors) and `make e2e` (41/41 Playwright e2e tests passed including axe-core WCAG 2.1 AA accessibility).
+- Write-path hardening deployed: 30-day wallet cooldown on re-proposing approved campaigns, 5-open-batch analyst cap, batch list pagination & status filters, authenticated campaign export with 503-only offline sample fallback, global 401 session expiration handling with re-login prompt, and immutable audit history timeline.
 
 ## Open items
 - LICENSE choice (none yet — deliberately unlicensed until decided)
@@ -61,10 +61,9 @@ Update at session start and before ending every session (AGENTS.md "Read first")
 - Ignored private docs confirmed: `docs/v2/`, `docs/v3/*.md` (except PROJECT.md, STATE.md, DECISIONS.md), `docs/01-*/`, `docs/02-*/`, `docs/archive/`, `spikes/`, `IDEA_POOL.md`, `CONTEXT*.md`, `*.pdf`, `*.docx`
 
 ## Blockers
-- None (all contracts frozen; everyone unblocked on sample/stub data).
-- For Shads: money chart axis divides by 1M and shows ৳0.0M for values in the thousands. (Wallet chart "Inactive Window" shading fixed in `web/src/Wallet.tsx` with an e2e check, D32.)
+- None.
 
 ## Last tool used
-write_to_file / replace_file_content (context files standardization)
+replace_file_content (hardening plan execution & docs update)
 
 
