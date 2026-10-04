@@ -29,9 +29,24 @@ def row(**over):
 
 class Query:
     def __init__(self, data):
-        self.data = data
+        self.data = list(data) if isinstance(data, list) else data
 
-    def __getattr__(self, _name):  # select / eq / order -> chainable
+    def eq(self, col, val):
+        if isinstance(self.data, list):
+            return Query([r for r in self.data if isinstance(r, dict) and r.get(col) == val])
+        return self
+
+    def in_(self, col, vals):
+        if isinstance(self.data, list):
+            return Query([r for r in self.data if isinstance(r, dict) and r.get(col) in vals])
+        return self
+
+    def range(self, start, end):
+        if isinstance(self.data, list):
+            return Query(self.data[start : end + 1])
+        return self
+
+    def __getattr__(self, _name):  # select / order / gt -> chainable
         return lambda *a, **k: self
 
     def execute(self):
@@ -147,6 +162,21 @@ def test_propose_409_wallet_in_open_batch(fake):
     fake.rpc_error = db_error("23505")
     r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
     assert r.status_code == 409
+    assert r.json()["detail"] == "A wallet is already in an open batch"
+
+
+def test_propose_409_wallet_cooldown(fake):
+    fake.rpc_error = db_error("P0004")
+    r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
+    assert r.status_code == 409
+    assert r.json()["detail"] == "A wallet was approved in a campaign in the last 30 days"
+
+
+def test_propose_429_too_many_open_batches(fake):
+    fake.rpc_error = db_error("P0005")
+    r = client.post("/api/batches", json=PROPOSE, headers=auth("t-analyst"))
+    assert r.status_code == 429
+    assert "Too many open batches" in r.json()["detail"]
 
 
 @pytest.mark.parametrize(
@@ -208,8 +238,11 @@ def test_decide_401(fake):
 def test_export_ok(fake):
     fake.tables["batch_summaries"] = [row(status="approved", decided_by="bbbb",
                                           decided_at="2026-10-03T16:00:00+00:00", decision_note="ok")]
-    fake.tables["batch_wallets"] = [{"wallet_id": "W-ABC123"}, {"wallet_id": "W-XYZ789"}]
-    r = client.get(f"/api/batches/{BATCH_ID}/export")
+    fake.tables["batch_wallets"] = [
+        {"batch_id": BATCH_ID, "wallet_id": "W-ABC123"},
+        {"batch_id": BATCH_ID, "wallet_id": "W-XYZ789"},
+    ]
+    r = client.get(f"/api/batches/{BATCH_ID}/export", headers=auth("t-analyst"))
     assert r.status_code == 200
     body = r.json()
     assert body["wallet_ids"] == ["W-ABC123", "W-XYZ789"]
@@ -217,13 +250,96 @@ def test_export_ok(fake):
     assert body["approved_by"] == "bbbb"
 
 
+def test_export_requires_auth(fake):
+    fake.tables["batch_summaries"] = [row(status="approved", decided_by="bbbb",
+                                          decided_at="2026-10-03T16:00:00+00:00", decision_note="ok")]
+    assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 401
+    assert client.get(f"/api/batches/{BATCH_ID}/export", headers=auth("invalid-token")).status_code == 401
+
+
 def test_export_404(fake):
-    assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 404
+    assert client.get(f"/api/batches/{BATCH_ID}/export", headers=auth("t-approver")).status_code == 404
 
 
 def test_export_409_not_approved(fake):
     fake.tables["batch_summaries"] = [row()]
-    assert client.get(f"/api/batches/{BATCH_ID}/export").status_code == 409
+    assert client.get(f"/api/batches/{BATCH_ID}/export", headers=auth("t-approver")).status_code == 409
+
+
+# ── locked wallets ───────────────────────────────────────────────────────────
+def test_locked_wallets_requires_auth(fake):
+    assert client.get("/api/wallets/locked").status_code == 401
+
+
+def test_locked_wallets_returns_open_and_cooldown(fake):
+    fake.tables["batch_wallets"] = [
+        {"batch_id": BATCH_ID, "batch_status": "proposed", "wallet_id": "W-OPEN01"},
+        {"batch_id": "22222222-2222-2222-2222-222222222222", "batch_status": "approved", "wallet_id": "W-COOL01"},
+    ]
+    fake.tables["remedy_batches"] = [
+        {"id": "22222222-2222-2222-2222-222222222222", "status": "approved", "decided_at": "2026-10-03T12:00:00+00:00"}
+    ]
+    r = client.get("/api/wallets/locked", headers=auth("t-analyst"))
+    assert r.status_code == 200
+    wallets = {w["wallet_id"]: w for w in r.json()}
+    assert "W-OPEN01" in wallets
+    assert wallets["W-OPEN01"]["reason"] == "open"
+    assert "W-COOL01" in wallets
+    assert wallets["W-COOL01"]["reason"] == "cooldown"
+    assert wallets["W-COOL01"]["until"] is not None
+
+
+# ── audit trail ──────────────────────────────────────────────────────────────
+def test_audit_trail_requires_auth(fake):
+    assert client.get(f"/api/batches/{BATCH_ID}/audit").status_code == 401
+
+
+def test_audit_trail_404(fake):
+    assert client.get(f"/api/batches/{BATCH_ID}/audit", headers=auth("t-analyst")).status_code == 404
+
+
+def test_audit_trail_ok(fake):
+    fake.tables["remedy_batches"] = [{"id": BATCH_ID}]
+    fake.tables["audit_log"] = [
+        {
+            "id": "33333333-3333-3333-3333-333333333333",
+            "actor_id": "aaaa",
+            "actor_role": "analyst",
+            "action": "batch.propose",
+            "target_id": BATCH_ID,
+            "metadata": {"wallet_count": 2},
+            "created_at": "2026-10-03T15:00:00+00:00",
+        },
+        {
+            "id": "44444444-4444-4444-4444-444444444444",
+            "actor_id": "bbbb",
+            "actor_role": "approver",
+            "action": "batch.approve",
+            "target_id": BATCH_ID,
+            "metadata": {"note": "approved for outreach"},
+            "created_at": "2026-10-03T16:00:00+00:00",
+        },
+    ]
+    r = client.get(f"/api/batches/{BATCH_ID}/audit", headers=auth("t-approver"))
+    assert r.status_code == 200
+    trail = r.json()
+    assert len(trail) == 2
+    assert trail[0]["action"] == "batch.propose"
+    assert trail[0]["actor_role"] == "analyst"
+    assert trail[1]["action"] == "batch.approve"
+    assert trail[1]["actor_role"] == "approver"
+
+
+# ── pagination & filters ─────────────────────────────────────────────────────
+def test_list_batches_pagination(fake):
+    fake.tables["batch_summaries"] = [row(), row()]
+    r = client.get("/api/batches?limit=10&offset=0")
+    assert r.status_code == 200
+
+    assert client.get("/api/batches?limit=0").status_code == 422
+    assert client.get("/api/batches?limit=101").status_code == 422
+    assert client.get("/api/batches?offset=-1").status_code == 422
+    assert client.get("/api/batches?status=invalid").status_code == 422
 
 
 # ── edge cases & auth hardening ──────────────────────────────────────────────
@@ -311,8 +427,11 @@ def test_full_workflow_consistency(fake):
             decided_at="2026-10-03T17:00:00+00:00",
         )
     ]
-    fake.tables["batch_wallets"] = [{"wallet_id": "W-MIG001"}, {"wallet_id": "W-MIG002"}]
-    res_exp = client.get(f"/api/batches/{BATCH_ID}/export")
+    fake.tables["batch_wallets"] = [
+        {"batch_id": BATCH_ID, "wallet_id": "W-MIG001"},
+        {"batch_id": BATCH_ID, "wallet_id": "W-MIG002"},
+    ]
+    res_exp = client.get(f"/api/batches/{BATCH_ID}/export", headers=auth("t-approver"))
     assert res_exp.status_code == 200
     exp_data = res_exp.json()
     assert exp_data["batch_id"] == BATCH_ID

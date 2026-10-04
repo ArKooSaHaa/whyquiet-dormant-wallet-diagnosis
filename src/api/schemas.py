@@ -88,3 +88,26 @@ class ExportBatchResponse(BaseModel):
     cost_bdt: float
     approved_by: str
     approved_at: str
+
+
+class LockReason(str, Enum):
+    open = "open"
+    cooldown = "cooldown"
+
+
+class LockedWallet(BaseModel):
+    # Wallet locked due to an open batch or 30-day post-approval cooldown
+    wallet_id: str
+    reason: LockReason
+    until: str | None = None
+
+
+class AuditEntry(BaseModel):
+    # Immutable audit trail entry
+    id: str
+    actor_id: str
+    actor_role: UserRole
+    action: str
+    target_id: str
+    metadata: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    created_at: str

@@ -59,6 +59,16 @@ export default function App() {
   const profileButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const handleSessionExpired = () => {
+      setUser(null);
+      setLoginOpen(true);
+      setLoginError("Your session has expired. Please sign in again.");
+    };
+    window.addEventListener("wq:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("wq:session-expired", handleSessionExpired);
+  }, []);
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
@@ -180,7 +190,7 @@ export default function App() {
                 aria-current={isQueue ? "page" : undefined}
                 className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
                   isQueue
-                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    ? "bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-1)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
                 }`}
               >
@@ -191,7 +201,7 @@ export default function App() {
                 aria-current={isBatches ? "page" : undefined}
                 className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
                   isBatches
-                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    ? "bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-1)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
                 }`}
               >
@@ -202,7 +212,7 @@ export default function App() {
                 aria-current={isEvidence ? "page" : undefined}
                 className={`px-3 py-1.5 rounded-[var(--radius-sm)] text-xs font-semibold transition-colors ${
                   isEvidence
-                    ? "bg-[var(--surface-2)] text-[var(--accent)] shadow-[var(--shadow-1)]"
+                    ? "bg-[var(--accent)] text-[var(--accent-fg)] shadow-[var(--shadow-1)]"
                     : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]"
                 }`}
               >

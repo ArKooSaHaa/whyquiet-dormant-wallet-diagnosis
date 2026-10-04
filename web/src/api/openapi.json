@@ -47,6 +47,47 @@
       "get": {
         "summary": "List Batches",
         "operationId": "list_batches_api_batches_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BatchStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -58,6 +99,16 @@
                     "$ref": "#/components/schemas/Batch"
                   },
                   "title": "Response List Batches Api Batches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -265,6 +316,22 @@
               "format": "uuid",
               "title": "Id"
             }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
           }
         ],
         "responses": {
@@ -274,6 +341,116 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ExportBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/wallets/locked": {
+      "get": {
+        "summary": "List Locked Wallets",
+        "operationId": "list_locked_wallets_api_wallets_locked_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LockedWallet"
+                  },
+                  "title": "Response List Locked Wallets Api Wallets Locked Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/batches/{id}/audit": {
+      "get": {
+        "summary": "Get Batch Audit",
+        "operationId": "get_batch_audit_api_batches__id__audit_get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditEntry"
+                  },
+                  "title": "Response Get Batch Audit Api Batches  Id  Audit Get"
                 }
               }
             }
@@ -312,6 +489,66 @@
   },
   "components": {
     "schemas": {
+      "AuditEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "actor_id": {
+            "type": "string",
+            "title": "Actor Id"
+          },
+          "actor_role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Metadata"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "actor_id",
+          "actor_role",
+          "action",
+          "target_id",
+          "created_at"
+        ],
+        "title": "AuditEntry"
+      },
       "Batch": {
         "properties": {
           "id": {
@@ -533,6 +770,42 @@
           "store"
         ],
         "title": "HealthResponse"
+      },
+      "LockReason": {
+        "type": "string",
+        "enum": [
+          "open",
+          "cooldown"
+        ],
+        "title": "LockReason"
+      },
+      "LockedWallet": {
+        "properties": {
+          "wallet_id": {
+            "type": "string",
+            "title": "Wallet Id"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/LockReason"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wallet_id",
+          "reason"
+        ],
+        "title": "LockedWallet"
       },
       "LoginRequest": {
         "properties": {
